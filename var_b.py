@@ -15,7 +15,7 @@ import operators as ops
 # y_max = 1
 # mx = 41
 # my = 61
-mb = 51
+mb = 21
 m = 3 * mb
 N = m * m
 xvec, h = np.linspace(0, 1, m, retstep=True)
@@ -27,41 +27,48 @@ y_left = yvec.reshape((m, 1))
 
 # define wave speeds
 a = 1
-b = 1
 b0 = 1
 b1 = 0.1
 B = np.ones((m, m)) * b0
-B[mb:2*mb, mb:2*mb] = b1  # block of different wave speeds
+# B[mb:2*mb, mb:2*mb] = b1  # block of different wave speeds
 B = B.reshape((N, 1))
 
+zlow = -0.2
+zhigh = 0.2
+
 # initial data
-# v = np.zeros((N, 1))
 sigma = 0.05
 x0 = 0.1
 y0 = 0.1
-v = np.exp(-(x - x0) ** 2 / sigma ** 2 - (y - y0) ** 2 / sigma ** 2)
+v = np.zeros((N, 1))
+# v = np.exp(-(x - x0) ** 2 / sigma ** 2 - (y - y0) ** 2 / sigma ** 2)
 v_t = np.zeros((N, 1))
 u = np.vstack((v, v_t))
 
 # gaussian inflow data
-t0 = 0.25
-
-
+# t0 = 0.25
 # def g(t): return 0.2 * np.exp(-(t - t0 + 0.5 * (y_left - 1)) ** 2 / (0.1 ** 2))
-def g(t): return np.zeros((m, 1))
+# def g(t): return np.zeros((m, 1))
+# wave inflow data
+freq = 3
+amp = 0.1
+omega = 2 * np.pi * freq
+def g(t): return amp * omega * np.sin(freq * 2 * np.pi * np.ones((m, 1)) * t)
 
 
 # define operators
 print('building operators...')
-ops_1d = D2_Variable_4(m, h)
-H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
-HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = d2_2d_variable_4(m, B, ops_1d)
-print('operators done!')
 
 # operators with constant b
-# op = ops.sbp_cent_4th(m, h)
-# H, HI, D1, D2, e_l, e_r, d1_l, d1_r = op
-# HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = ops.convert_1d_2d(op, m)
+op = ops.sbp_cent_4th(m, h)
+H, HI, D1, D2, e_l, e_r, d1_l, d1_r = op
+HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = ops.convert_1d_2d(op, m)
+
+# ops_1d = D2_Variable_4(m, h)
+# H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
+# HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = d2_2d_variable_4(m, B, ops_1d)
+print('operators done!')
+
 
 # D = a * (D2x + D2y) - HHI @ (eW @ d1_W.T + eE @ d1_E.T + eN @ d1_N.T + eS @ d1_S.T)
 C = - HHI @ eE @ H @ eE.T
@@ -72,14 +79,12 @@ DD = spsp.bmat(((None, spsp.eye(N)), (D, C)))
 zeros_N = np.zeros((N, 1))
 
 # time stuff
-T = 10
+T = 1
 ht = 0.5 * 2.8 / np.sqrt(abs(spsplg.eigs(D, 1)[0][0]))
 mt = int(math.ceil(T / ht) + 1)
 tvec, ht = np.linspace(0, T, mt, retstep=True)
 
 # plot stuff
-zlow = -0.5
-zhigh = 0.5
 ax: plt.Axes
 fig: plt.Figure
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 5))
@@ -95,9 +100,7 @@ plt.pause(0.5)
 
 
 def rhs(u): return DD @ u
-
-
-def gg(t): return np.vstack((G @ g(t), zeros_N))
+def gg(t): return np.vstack((zeros_N, G @ g(t)))
 
 
 # def gg(t): return 0
@@ -118,7 +121,7 @@ for t_i in range(mt - 1):
         # print((G @ g(t))[0])
 
         title.set_text(f"t = {tvec[t_i + 1]:.2f}")
-        plt.draw()
-        plt.pause(0.05)
+        # plt.draw()
+        plt.pause(0.01)
 
 plt.show()
