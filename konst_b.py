@@ -1,6 +1,7 @@
 import numpy as np
 from D2_Variable import *
 import scipy.sparse as spsp
+import scipy.sparse.linalg as spsplg
 import math
 from matplotlib import pyplot as plt
 
@@ -38,15 +39,13 @@ v = np.exp(-(x - x0) ** 2 / sigma ** 2 - (y - y0) ** 2 / sigma ** 2)
 v_t = np.zeros((N, 1))
 u = np.vstack((v, v_t))
 
-# time stuff
-T = 2
-ht = 0.1 * h / c
-mt = int(math.ceil(T / ht) + 1)
-tvec, ht = np.linspace(0, T, mt, retstep=True)
-
 # gaussian inflow data
-# t0 = 1
-# def g(t): return np.exp(-(t - t0 - 2 * y_left) ** 2) * np.ones((m, 1))
+t0 = 0.25
+
+
+def g(t): return 0.2 * np.exp(-(t - t0 + 0.5*(y_left-1)) ** 2 / (0.1 ** 2))
+# def g(t): return np.zeros((m, 1))
+
 
 # define operators
 # ops_1d = D2_Variable_4(m, h)
@@ -60,15 +59,20 @@ HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = ops.convert_1d
 
 # D = a * (D2x + D2y) - HHI @ (eW @ d1_W.T + eE @ d1_E.T + eN @ d1_N.T + eS @ d1_S.T)
 C = - HHI @ eE @ H @ eE.T
-# G = - HHI @ eW
+G = HHI @ eW @ H
 D = (D2x + D2y) - HHI @ (-eW @ H @ d1_W.T + eE @ H @ d1_E.T + eN @ H @ d1_N.T - eS @ H @ d1_S.T)
-
 
 DD = spsp.bmat(((None, spsp.eye(N)), (D, C)))
 zeros_N = np.zeros((N, 1))
 
+# time stuff
+T = 10
+ht = 0.5 * 2.8 / np.sqrt(abs(spsplg.eigs(D, 1)[0][0]))
+mt = int(math.ceil(T / ht) + 1)
+tvec, ht = np.linspace(0, T, mt, retstep=True)
 
-# plot
+
+# plot stuff
 zlow = 0
 zhigh = 0.5
 ax: plt.Axes
@@ -86,8 +90,10 @@ plt.pause(0.5)
 
 
 def rhs(u): return DD @ u
-# def gg(t): return np.vstack((zeros_N, G @ g(t)))
-def gg(t): return 0
+def gg(t): return np.vstack((G @ g(t), zeros_N))
+
+
+# def gg(t): return 0
 
 
 t = 0
@@ -96,12 +102,13 @@ for t_i in range(mt - 1):
     u, t = rk4.step(rhs, u, gg, t, ht)
 
     # Update plot every 20th time step
-    if (t_i % 20) == 0 or t_i == mt - 2:
+    if (t_i % 10) == 0 or t_i == mt - 2:
         v = u[0:N]
         # phi_t = v[mtot:2 * mtot]
 
         mesh.set_array(v.reshape(m, m))
         # print(tvec[t_i + 1])
+        # print((G @ g(t))[0])
 
         title.set_text(f"t = {tvec[t_i + 1]:.2f}")
         plt.draw()
