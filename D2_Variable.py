@@ -12,13 +12,13 @@ def d2_2d_variable_4(m, b, ops_1d):
     @return: HH, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N)
     @param b: (m*m, 1) matrix containing wave speeds in column-first order
     @param m: number of grid points per direction
-    @param h: distance between points
     @param ops_1d: 1D operators from D2_Variable_4
     """
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
     N = m*m
 
     ind = np.reshape(np.arange(N), (m, m))
+    b = b.reshape((N,))
 
     # D2y is just diag(D2(b(x,:))) which is very easy to build.
     # D2x is much more annoying to build, but using that a column
