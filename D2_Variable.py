@@ -3,7 +3,7 @@ import scipy.sparse as spsp
 
 
 # noinspection DuplicatedCode
-def d2_2d_variable_4(m, h, b, ops_1d):
+def d2_2d_variable_4(m, b, ops_1d):
     """
     Returns 4th order accurate 2D operators for a square m*m-grid with wave speeds b.
     The operators are HH, D2 in x- and y-directions, and two tuples with e and d-operators
@@ -16,30 +16,31 @@ def d2_2d_variable_4(m, h, b, ops_1d):
     @param ops_1d: 1D operators from D2_Variable_4
     """
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
-    Im = spsp.eye(m)
     N = m*m
 
     ind = np.reshape(np.arange(N), (m, m))
 
+    # D2y is just diag(D2(b(x,:))) which is very easy to build.
+    # D2x is much more annoying to build, but using that a column
+    # first matrix can be arranged to a row first matrix using a
+    # perfect shuffle matrix such that B kron A = S (A kron B) S^T
+    # This makes life very easy for us :)
+    I_N = spsp.eye(N, format='lil')
+    S = spsp.vstack([I_N[i::m, :] for i in range(m)]).tocsr()
+    D2x = S @ spsp.block_diag([D2_fun(b[ind[:, i]]) for i in range(m)]).tocsr() @ S.T
     D2y = spsp.block_diag([D2_fun(b[ind[i, :]]) for i in range(m)]).tocsr()
-    D2x = spsp.lil_matrix((N, N))
-    for i in range(0, m):
-        D = D2_fun(b[ind[:, i]])
-        p = ind[:, i]
-        for count, idx in enumerate(p):
-            D2x[p, idx] = D[:, count].T  # I have no clue why this works
-    D2x = D2x.tocsr()
 
-    HH = spsp.kron(H, H)
-    HHI = spsp.kron(HI, HI)
-    eW = spsp.kron(e_l, Im)
-    eE = spsp.kron(e_r, Im)
-    eS = spsp.kron(Im, e_l)
-    eN = spsp.kron(Im, e_r)
-    d1_W = spsp.kron(d1_l, Im)
-    d1_E = spsp.kron(d1_r, Im)
-    d1_S = spsp.kron(Im, d1_l)
-    d1_N = spsp.kron(Im, d1_r)
+    Im = spsp.eye(m)
+    HH = spsp.kron(H, H, 'dia')
+    HHI = spsp.kron(HI, HI, 'dia')
+    eW = spsp.kron(Im, e_l, 'csr')
+    eE = spsp.kron(Im, e_r, 'csr')
+    eS = spsp.kron(e_l, Im, 'csr')
+    eN = spsp.kron(e_r, Im, 'csr')
+    d1_W = spsp.kron(Im, d1_l, 'csr')
+    d1_E = spsp.kron(Im, d1_r, 'csr')
+    d1_S = spsp.kron(d1_l, Im, 'csr')
+    d1_N = spsp.kron(d1_r, Im, 'csr')
 
     return HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N)
 
