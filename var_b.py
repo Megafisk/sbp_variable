@@ -102,7 +102,6 @@ fig: plt.Figure
 fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 5))
 plt.xlabel("x")
 plt.ylabel("y")
-# mesh = ax.pcolormesh(X, Y, v.reshape((m, m)), shading="nearest", vmin=zlow, vmax=zhigh)
 mesh = ax.imshow(v.reshape((m, m), order='F'), vmin=zlow, vmax=zhigh, origin='lower')
 title = plt.title("Phi at t = " + str(0))
 fig.colorbar(mesh, ax=ax)
@@ -111,27 +110,17 @@ plt.draw()
 plt.pause(0.5)
 
 
-def rhs(u): return DD @ u
-def gg(t): return np.vstack((zeros_N, G @ g(t)))
-
-
-# TODO
-def energy(u):
-    v = u[0:N]
-    vt = u[N:]
-
-    return (v.T @ HH @ v + vt.T @ HH @ vt)[0, 0]
+def rhs(t, u): return DD @ u + np.vstack((zeros_N, G @ g(t)))
 
 
 t = 0
 for t_i in range(mt - 1):
     # Take one step with the fourth order Runge-Kutta method.
-    u, t = rk4.step(rhs, u, gg, t, ht)
+    u, t = rk4.step(rhs, u, t, ht)
 
     # Update plot every 20th time step
     if (t_i % 5) == 0 or t_i == mt - 2:
         v = u[0:N]
-        # phi_t = v[mtot:2 * mtot]
 
         mesh.set_array(v.reshape((m, m), order='F'))
         # print(tvec[t_i + 1])
