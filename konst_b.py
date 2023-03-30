@@ -15,11 +15,12 @@ import operators as ops
 # y_max = 1
 # mx = 41
 # my = 61
-m = 101
+m = 60
+T = 2
 N = m * m
 xvec, h = np.linspace(0, 1, m, retstep=True)
 yvec = np.linspace(0, 1, m)
-X, Y = np.meshgrid(xvec, yvec)
+X, Y = np.meshgrid(xvec, yvec, indexing='ij')
 x = X.reshape((N, 1))
 y = Y.reshape((N, 1))
 y_left = yvec.reshape((m, 1))
@@ -33,19 +34,20 @@ B = np.ones(N) * b  # constant wave speed
 # initial data
 # v = np.zeros((N, 1))
 sigma = 0.05
-x0 = 0.4
+x0 = 0.2
 y0 = 0.6
+v: np.ndarray
 v = np.exp(-(x - x0) ** 2 / sigma ** 2 - (y - y0) ** 2 / sigma ** 2)
 v_t = np.zeros((N, 1))
 u = np.vstack((v, v_t))
 
 # gaussian inflow data
-t0 = 0.25
-
-
-def g(t): return 0.2 * np.exp(-(t - t0 + 0.5*(y_left-1)) ** 2 / (0.1 ** 2))
+# t0 = 0.25
+# def g(t): return 0.2 * np.exp(-(t - t0 + 0.5*(y_left-1)) ** 2 / (0.1 ** 2))
 # def g(t): return np.zeros((m, 1))
-
+freq = 3
+amp = 0.2
+def g(t): return amp * np.cos(freq * 2 * np.pi * np.ones((m, 1)) * t)
 
 # define operators
 # ops_1d = D2_Variable_4(m, h)
@@ -66,7 +68,6 @@ DD = spsp.bmat(((None, spsp.eye(N)), (D, C)))
 zeros_N = np.zeros((N, 1))
 
 # time stuff
-T = 10
 ht = 0.5 * 2.8 / np.sqrt(abs(spsplg.eigs(D, 1)[0][0]))
 mt = int(math.ceil(T / ht) + 1)
 tvec, ht = np.linspace(0, T, mt, retstep=True)
@@ -81,7 +82,8 @@ fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 5))
 plt.xlabel("x")
 plt.ylabel("y")
 # mesh = ax.pcolormesh(X, Y, v.reshape((m, m)), shading="nearest", vmin=zlow, vmax=zhigh)
-mesh = ax.imshow(v.reshape(m, m), vmin=zlow, vmax=zhigh, origin='lower')
+# imshow uses row first order by default
+mesh = ax.imshow(v.reshape((m, m), order='F'), vmin=zlow, vmax=zhigh, origin='lower', extent=[0, 1, 0, 1])
 title = plt.title("Phi at t = " + str(0))
 fig.colorbar(mesh, ax=ax)
 fig.tight_layout()
@@ -106,7 +108,7 @@ for t_i in range(mt - 1):
         v = u[0:N]
         # phi_t = v[mtot:2 * mtot]
 
-        mesh.set_array(v.reshape(m, m))
+        mesh.set_array(v.reshape((m, m), order='F'))
         # print(tvec[t_i + 1])
         # print((G @ g(t))[0])
 
