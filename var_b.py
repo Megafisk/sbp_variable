@@ -1,12 +1,11 @@
 import numpy as np
-from D2_Variable import *
+import D2_Variable as D2V
 import scipy.sparse as spsp
 import scipy.sparse.linalg as spsplg
 import math
 from matplotlib import pyplot as plt
 
 import rungekutta4 as rk4
-import operators as ops
 
 # define grid
 # x_min = 0
@@ -74,9 +73,9 @@ print('building operators...')
 # H, HI, D1, D2, e_l, e_r, d1_l, d1_r = op
 # HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = ops.convert_1d_2d(op, m)
 
-ops_1d = D2_Variable_4(m, h)
+ops_1d = D2V.D2_Variable(m, h, 4)
 H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
-HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = d2_2d_variable_4(m, b, ops_1d)
+HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2V.ops_2d(m, b, ops_1d)
 print('operators done!')
 
 AA = spsp.diags(a)
