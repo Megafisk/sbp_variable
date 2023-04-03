@@ -21,7 +21,7 @@ def D2_Variable_2(m,h):
     d1_r = np.zeros(m)
     d1_r[-3:] = np.flip(-d_stenc)
 
-    D1 = np.diag(-0.5*np.ones(m),-1) + np.diag(0.5*np.ones(m), 1)
+    D1 = np.diag(-0.5*np.ones(m-1),-1) + np.diag(0.5*np.ones(m-1), 1)
     D1[0,0] = -1
     D1[0,1] = 1
     D1[-1,-1] = 1
