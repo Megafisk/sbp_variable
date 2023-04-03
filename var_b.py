@@ -16,6 +16,7 @@ import rungekutta4 as rk4
 # my = 61
 mb = 20
 T = 10
+order = 2
 
 m = 3 * mb
 N = m * m
@@ -73,21 +74,20 @@ print('building operators...')
 # H, HI, D1, D2, e_l, e_r, d1_l, d1_r = op
 # HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = ops.convert_1d_2d(op, m)
 
-ops_1d = D2V.D2_Variable(m, h, 4)
+ops_1d = D2V.D2_Variable(m, h, order)
 H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
 HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2V.ops_2d(m, b, ops_1d)
 print('operators done!')
 
-AA = spsp.diags(a)
-BB = spsp.diags(b)
+AAI = spsp.diags(1 / a)
 
-# D = a * (D2x + D2y) - HHI @ (eW @ d1_W.T + eE @ d1_E.T + eN @ d1_N.T + eS @ d1_S.T)
-C = - HHI @ eE @ H @ eE.T
-G = HHI @ eW @ H
-D = (D2x + D2y) - HHI @ (- eW @ H @ spsp.diags(B[0, :]) @ d1_W.T + eE @ H @ spsp.diags(B[-1, :]) @ d1_E.T
-                         + eN @ H @ spsp.diags(B[:, -1]) @ d1_N.T - eS @ H @ spsp.diags(B[:, 0]) @ d1_S.T)
+tau_E = spsp.diags(np.sqrt(A * B)[-1, :])
+E = - AAI @ HHI @ eE @ H @ tau_E @ eE.T
+G = AAI @ HHI @ eW @ H
+D = AAI @ (D2x + D2y) - AAI @ HHI @ (- eW @ H @ spsp.diags(B[0, :]) @ d1_W.T + eE @ H @ spsp.diags(B[-1, :]) @ d1_E.T
+                                     + eN @ H @ spsp.diags(B[:, -1]) @ d1_N.T - eS @ H @ spsp.diags(B[:, 0]) @ d1_S.T)
 
-DD = spsp.bmat(((None, spsp.eye(N)), (D, C)))
+DD = spsp.bmat(((None, spsp.eye(N)), (D, E)))
 zeros_N = np.zeros((N, 1))
 
 # time stuff
