@@ -1,133 +1,107 @@
-import numpy as np
-import D2_Variable as D2V
-import scipy.sparse as spsp
-import scipy.sparse.linalg as spsplg
-import math
 from matplotlib import pyplot as plt
-
+import scipy.sparse as spsp
+import numpy as np
+import D2_Variable as D2Var
 import rungekutta4 as rk4
 
-# define grid
-# x_min = 0
-# x_max = 1
-# y_min = 0
-# y_max = 1
-# mx = 41
-# my = 61
-mb = 20
-T = 10
-order = 2
 
-m = 3 * mb
-N = m * m
-xvec, h = np.linspace(0, 1, m, retstep=True)
-yvec = np.linspace(0, 1, m)
-X, Y = np.meshgrid(xvec, yvec, indexing='ij')
-x = X.reshape((N, 1))
-y = Y.reshape((N, 1))
-y_left = yvec.reshape((m, 1))
-
-# define wave speeds
-a0 = 1
-a1 = 0.1
-b0 = 1
-b1 = 0.1
-A = np.ones((m, m)) * a0
-B = np.ones((m, m)) * b0
-# B[mb:2*mb, mb:2*mb] = b1  # block of different wave speeds
-# A[mb:2*mb, mb:2*mb] = a1
-# B[(X - Y < 1 / 3) & (X - Y > 0) & (1 / 3 < X) & (X < 2 / 3) & (1 / 3 < Y) & (Y < 2 / 3)] = b1
-B[(Y > 1/3) & (1 / 3 < X) & (X < 2 / 3)] = b1  # SKAPAR INSTABIL!
-a = A.reshape((N,))
-b = B.reshape((N,))
-
-zlow = -0.5
-zhigh = 0.5
-
-# initial data
-sigma = 0.05
-x0 = 0.6
-y0 = 0.1
-v = np.zeros((N, 1))
-# v = np.exp(-(x - x0) ** 2 / sigma ** 2 - (y - y0) ** 2 / sigma ** 2)
-v_t = np.zeros((N, 1))
-u = np.vstack((v, v_t))
-
-# gaussian inflow data
-t0 = 0.25
-w = 0.1
-amp = 0.4
-def g(t): return amp * -2 * (t - t0) / (w ** 2) * np.exp(-(t - t0 + 0 * (y_left - 1)) ** 2 / (w ** 2))
-# def g(t): return np.zeros((m, 1))
-# wave inflow data
-# freq = 3
-# amp = 0.1
-# omega = 2 * np.pi * freq
-# def g(t): return amp * omega * np.sin(freq * 2 * np.pi * np.ones((m, 1)) * t)
+def plot_v(v, m, vlim=(-0.4, 0.4)):
+    ax: plt.Axes
+    fig: plt.Figure
+    fig, ax = plt.subplots()
+    img = ax.imshow(v.reshape((m, m), order='F'),
+                    origin='lower',
+                    extent=[0, 1, 0, 1],
+                    vmin=vlim[0], vmax=vlim[1])
+    fig.colorbar(img, ax=ax)
+    plt.xlabel("x")
+    plt.ylabel("y")
+    return fig, ax, img
 
 
-# define operators
-print('building operators...')
+def grid(m):
+    xvec, h = np.linspace(0, 1, m, retstep=True)
+    yvec = np.linspace(0, 1, m)
+    X, Y = np.meshgrid(xvec, yvec, indexing='ij')
+    x = X.reshape((m * m, 1))
+    y = Y.reshape((m * m, 1))
 
-# operators with constant b
-# op = ops.sbp_cent_4th(m, h)
-# H, HI, D1, D2, e_l, e_r, d1_l, d1_r = op
-# HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = ops.convert_1d_2d(op, m)
-
-ops_1d = D2V.D2_Variable(m, h, order)
-H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
-HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2V.ops_2d(m, b, ops_1d)
-print('operators done!')
-
-AAI = spsp.diags(1 / a)
-
-tau_E = spsp.diags(np.sqrt(A * B)[-1, :])
-E = - AAI @ HHI @ eE @ H @ tau_E @ eE.T
-G = AAI @ HHI @ eW @ H
-D = AAI @ (D2x + D2y) - AAI @ HHI @ (- eW @ H @ spsp.diags(B[0, :]) @ d1_W.T + eE @ H @ spsp.diags(B[-1, :]) @ d1_E.T
-                                     + eN @ H @ spsp.diags(B[:, -1]) @ d1_N.T - eS @ H @ spsp.diags(B[:, 0]) @ d1_S.T)
-
-DD = spsp.bmat(((None, spsp.eye(N)), (D, E)))
-zeros_N = np.zeros((N, 1))
-
-# time stuff
-ht = 0.5 * 2.8 / np.sqrt(abs(spsplg.eigs(D, 1)[0][0]))
-mt = int(math.ceil(T / ht) + 1)
-tvec, ht = np.linspace(0, T, mt, retstep=True)
-
-# plot stuff
-ax: plt.Axes
-fig: plt.Figure
-fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(6, 5))
-plt.xlabel("x")
-plt.ylabel("y")
-mesh = ax.imshow(v.reshape((m, m), order='F'), vmin=zlow, vmax=zhigh, origin='lower')
-title = plt.title("Phi at t = " + str(0))
-fig.colorbar(mesh, ax=ax)
-fig.tight_layout()
-plt.draw()
-plt.pause(0.5)
+    return h, X, Y, x, y
 
 
-def rhs(t, u): return DD @ u + np.vstack((zeros_N, G @ g(t)))
+def initial_gaussian(x, y, N, sigma, x0, y0):
+    v0 = np.exp(-(x - x0) ** 2 / sigma ** 2 - (y - y0) ** 2 / sigma ** 2)
+    v_t = np.zeros((N, 1))
+    u = np.vstack((v0, v_t))
+    return u
 
 
-t = 0
-for t_i in range(mt - 1):
-    # Take one step with the fourth order Runge-Kutta method.
-    u, t = rk4.step(rhs, u, t, ht)
+def initial_zero(N):
+    return np.zeros((2 * N, 1))
 
-    # Update plot every 20th time step
-    if (t_i % 5) == 0 or t_i == mt - 2:
-        v = u[0:N]
 
-        mesh.set_array(v.reshape((m, m), order='F'))
-        # print(tvec[t_i + 1])
-        # print((G @ g(t))[0])
+def inflow_wave(m, freq, amp):
+    omega = 2 * np.pi * freq
 
-        title.set_text(f"t = {tvec[t_i + 1]:.2f}")
-        # print(energy(u))
-        # plt.draw()
-        plt.pause(0.01)
+    def g(t): return amp * omega * np.sin(freq * 2 * np.pi * np.ones((m, 1)) * t)
 
-plt.show()
+    return g
+
+
+def inflow_gaussian(m, amp, w, t0):
+    def g(t): return amp * -2 * (t - t0) / (w ** 2) * np.exp(-(t - t0) ** 2 / (w ** 2)) * np.ones((m, 1))
+
+    return g
+
+
+def build_ops(order, A, B, g, N, m, h):
+    a = A.reshape((N,))
+    b = B.reshape((N,))
+
+    print('building D2...')
+    ops_1d = D2Var.D2_Variable(m, h, order)
+    H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
+    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(m, b, ops_1d)
+    print('building DD...')
+
+    AAI = spsp.diags(1 / a)
+
+    tau_E = spsp.diags(np.sqrt(A * B)[-1, :])
+    E = - AAI @ HHI @ eE @ H @ tau_E @ eE.T
+    G = AAI @ HHI @ eW @ H
+    D = AAI @ (D2x + D2y) - AAI @ HHI @ (
+            - eW @ H @ spsp.diags(B[0, :]) @ d1_W.T + eE @ H @ spsp.diags(B[-1, :]) @ d1_E.T
+            + eN @ H @ spsp.diags(B[:, -1]) @ d1_N.T - eS @ H @ spsp.diags(B[:, 0]) @ d1_S.T)
+
+    DD = spsp.bmat(((None, spsp.eye(N)), (D, E)))
+    zeros_N = np.zeros((N, 1))
+
+    def rhs(t, u): return DD @ u + np.vstack((zeros_N, G @ g(t)))
+
+    print('operators done!')
+    return rhs
+
+
+def run_sim(u0, rhs, T, ht, update=lambda u, t, t_i, mt: None):
+    mt = int(np.ceil(T / ht) + 1)
+    tvec, ht = np.linspace(0, T, mt, retstep=True)
+
+    u = u0
+    t = 0
+    for t_i in range(mt - 1):
+        # Take one step with the fourth order Runge-Kutta method.
+        u, t = rk4.step(rhs, u, t, ht)
+        update(u, t, t_i, mt)
+
+    return u, t
+
+
+def plot_every(interval, img, title, N, m):
+    def u_plot_every_n(u, t, t_i, mt):
+        if (t_i % interval) == 0 or t_i == mt - 2:
+            v = u[:N]
+            img.set_array(v.reshape((m, m), order='F'))
+            title.set_text(f't = {t:.2f}')
+            plt.pause(0.01)
+
+    return u_plot_every_n
