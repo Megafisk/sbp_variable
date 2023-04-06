@@ -1,26 +1,38 @@
 from var_b import *
+import scipy.sparse.linalg as splg
 
-
-if __name__ == '__main__':
-    mb = 20
+def run_ref_prob(mb):
     T = 2
     order = 2
-    draw_every_n = 5
+    draw_every_n = 10
+    a_center = 1
+    b_center = 0.25
+    freq = 3
+    amp = 0.1
 
-    m = 3 * mb
-    N = m * m
-    h, X, Y, x, y = grid(m)
+    reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n)
+    plt.show()
+
+
+def have_fun():
+    mb = 30
+    T = 5
+    order = 2
+    draw_every_n = 1
+
+    grid = Grid(mb)
+    m, N, h, X, Y, x, y = grid.params()
 
     # define wave speeds
     a0 = 1
-    a1 = 1
+    a1 = 2
     b0 = 1
     b1 = 0.25
     A = np.ones((m, m)) * a0
     B = np.ones((m, m)) * b0
-    B[mb:2*mb+1, mb:2*mb+1] = b1  # block of different wave speeds
+    # B[mb:2 * mb + 1, mb:2 * mb + 1] = b1  # block of different wave speeds
     # A[mb:2*mb, mb:2*mb] = a1
-    # B[(X - Y < 1 / 3) & (X - Y > 0) & (1 / 3 < X) & (X < 2 / 3) & (1 / 3 < Y) & (Y < 2 / 3)] = b1
+    B[(X - Y < 1 / 3) & (X - Y > 0) & (1 / 3 < X) & (X < 2 / 3) & (1 / 3 < Y) & (Y < 2 / 3)] = b1
     # B[(Y > 1 / 3) & (1 / 3 < X) & (X < 2 / 3)] = b1  # SKAPAR INSTABIL!
 
     zlow = -0.4
@@ -30,8 +42,8 @@ if __name__ == '__main__':
     sigma = 0.05
     x0 = 0.6
     y0 = 0.1
-    u0 = initial_zero(N)
-    # u0 = initial_gaussian(x, y, N, sigma, x0, y0)
+    # u0 = initial_zero(N)
+    u0 = initial_gaussian(x, y, N, sigma, x0, y0)
 
     # gaussian inflow data
     # t0 = 0.25
@@ -41,7 +53,7 @@ if __name__ == '__main__':
 
     # wave inflow data
     freq = 3
-    amp = 0.1
+    amp = 0
     g = inflow_wave(m, freq, amp)
 
     # time stuff
@@ -50,7 +62,7 @@ if __name__ == '__main__':
     # print("eigs done!")
     ht = 0.14 / mb
 
-    rhs = build_ops(order, A, B, g, N, m, h)
+    rhs, _ = build_ops(order, A, B, g, grid)
 
     fig, ax, img = plot_v(u0[:N], m, (zlow, zhigh))
     title = plt.title("t = 0.00")
@@ -63,3 +75,23 @@ if __name__ == '__main__':
     plt.show()
 
 
+def test_calc_timestep(mb, order):
+    a0 = 1
+    a1 = 2
+    b0 = 1
+    b1 = 0.9
+
+    grid = Grid(mb)
+    A = np.ones((grid.m, grid.m)) * a0
+    B = np.ones((grid.m, grid.m)) * b0
+    A[mb:2 * mb + 1, mb:2 * mb + 1] = a1  # block of different wave speeds
+    B[mb:2 * mb + 1, mb:2 * mb + 1] = b1  # block of different wave speeds
+    dt = calc_timestep(order, A, B, grid)
+    return dt
+
+
+if __name__ == '__main__':
+    # have_fun()
+    run_ref_prob(25)
+    # print(test_calc_timestep(40, 6))
+    pass

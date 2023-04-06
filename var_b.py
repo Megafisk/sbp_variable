@@ -1,5 +1,7 @@
 from matplotlib import pyplot as plt
 import scipy.sparse as spsp
+import scipy.sparse.linalg as splg
+from scipy.interpolate import RegularGridInterpolator
 import numpy as np
 import D2_Variable as D2Var
 import rungekutta4 as rk4
@@ -19,14 +21,29 @@ def plot_v(v, m, vlim=(-0.4, 0.4)):
     return fig, ax, img
 
 
-def grid(m):
-    xvec, h = np.linspace(0, 1, m, retstep=True)
-    yvec = np.linspace(0, 1, m)
-    X, Y = np.meshgrid(xvec, yvec, indexing='ij')
-    x = X.reshape((m * m, 1))
-    y = Y.reshape((m * m, 1))
+class Grid:
+    def __init__(self, m, block=True):
+        if block:
+            mb = m
+            self.mb = mb
+            self.m = 3 * mb + 1
+        else:
+            self.m = m
+        self.N = self.m ** 2
+        self.xvec, self.h = np.linspace(0, 1, self.m, retstep=True)
+        self.yvec = np.linspace(0, 1, self.m)
+        self.X, self.Y = np.meshgrid(self.xvec, self.yvec, indexing='ij')
+        self.x = self.X.reshape((self.N, 1))
+        self.y = self.Y.reshape((self.N, 1))
+        self.xy = np.hstack((self.x, self.y))
 
-    return h, X, Y, x, y
+    def mnh(self):
+        """Returns m, N, h"""
+        return self.m, self.N, self.h
+
+    def params(self):
+        """Returns m, N, h, X, Y, x, y"""
+        return self.m, self.N, self.h, self.X, self.Y, self.x, self.y
 
 
 def initial_gaussian(x, y, N, sigma, x0, y0):
@@ -54,15 +71,39 @@ def inflow_gaussian(m, amp, w, t0):
     return g
 
 
-def build_ops(order, A, B, g, N, m, h):
+def calc_timestep(order, A, B, G: Grid, mb_ref=6):
+    """
+    Calculates timestep from the D-operator for a coarse grid with mb = mb_ref points
+    per block, then assuming linear converge. Will slightly overestimate the correct value by maybe 0-2%.
+    """
+    a_interp = RegularGridInterpolator((G.xvec, G.yvec), A)
+    b_interp = RegularGridInterpolator((G.xvec, G.yvec), B)
+    cg = Grid(mb_ref)
+    a = a_interp(cg.xy)
+    b = b_interp(cg.xy)
+    ops_1d_coarse = D2Var.D2_Variable(cg.m, cg.h, order)
+    H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d_coarse
+    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(cg.m, b, ops_1d_coarse)
+    AAI = spsp.diags(1 / a)
+    D = AAI @ (D2x + D2y) - AAI @ HHI @ (
+            - eW @ H @ spsp.diags(eW.T @ a) @ d1_W.T + eE @ H @ spsp.diags(eE.T @ a) @ d1_E.T
+            + eN @ H @ spsp.diags(eN.T @ a) @ d1_N.T - eS @ H @ spsp.diags(eS.T @ a) @ d1_S.T)
+    c = 1 / np.sqrt(abs(splg.eigs(D, 1)[0][0])) / cg.h
+    return 0.5 * 2.8 * c * G.h
+
+
+def build_ops(order, A, B, g, grid, output=True):
+    m, N, h = grid.mnh()
     a = A.reshape((N,))
     b = B.reshape((N,))
 
-    print('building D2...')
+    if output:
+        print('building D2...')
     ops_1d = D2Var.D2_Variable(m, h, order)
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
     HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(m, b, ops_1d)
-    print('building DD...')
+    if output:
+        print('building DD...')
 
     AAI = spsp.diags(1 / a)
 
@@ -76,9 +117,11 @@ def build_ops(order, A, B, g, N, m, h):
     DD = spsp.bmat(((None, spsp.eye(N)), (D, E)))
     zeros_N = np.zeros((N, 1))
 
-    def rhs(t, u): return DD @ u + np.vstack((zeros_N, G @ g(t)))
+    def rhs(t, u):
+        return DD @ u + np.vstack((zeros_N, G @ g(t)))
 
-    print('operators done!')
+    if output:
+        print('operators done!')
     return rhs
 
 
@@ -105,3 +148,41 @@ def plot_every(interval, img, title, N, m):
             plt.pause(0.01)
 
     return u_plot_every_n
+
+
+def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=-1, zlim=(-0.4, 0.4)):
+    grid = Grid(mb)
+    m, N, h, X, Y, x, y = grid.params()
+
+    # define wave speeds
+    a0 = 1
+    b0 = 1
+    A = np.ones((m, m)) * a0
+    B = np.ones((m, m)) * b0
+    A[mb:2 * mb + 1, mb:2 * mb + 1] = a_center  # block of different wave speeds
+    B[mb:2 * mb + 1, mb:2 * mb + 1] = b_center
+
+    u0 = initial_zero(N)
+    g = inflow_wave(m, freq, amp)
+
+    rhs = build_ops(order, A, B, g, grid)
+
+    ht = calc_timestep(order, A, B, grid)
+    print(ht)
+
+    if draw_every_n > 0:
+        fig, ax, img = plot_v(u0[:N], m, zlim)
+        title = plt.title("t = 0.00")
+        plt.draw()
+        plt.pause(0.5)
+
+        update = plot_every(draw_every_n, img, title, N, m)
+    else:
+        def update(*args):
+            pass
+
+    u, t = run_sim(u0, rhs, T, ht, update)
+
+    v = u[:N]
+    v_t = u[N:]
+    return v, v_t, t
