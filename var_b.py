@@ -6,79 +6,8 @@ import numpy as np
 import D2_Variable as D2Var
 import rungekutta4 as rk4
 
-
-def plot_v(v, m, vlim=(-0.4, 0.4)):
-    ax: plt.Axes
-    fig: plt.Figure
-    fig, ax = plt.subplots()
-    img = ax.imshow(v.reshape((m, m), order='F'),
-                    origin='lower',
-                    extent=[0, 1, 0, 1],
-                    vmin=vlim[0], vmax=vlim[1])
-    fig.colorbar(img, ax=ax)
-    plt.xlabel("x")
-    plt.ylabel("y")
-    return fig, ax, img
-
-
-class Grid:
-    def __init__(self, m, block=True):
-        if block:
-            mb = m
-            self.mb = mb
-            self.m = 3 * mb + 1
-        else:
-            self.m = m
-        self.N = self.m ** 2
-        self.xvec, self.h = np.linspace(0, 1, self.m, retstep=True)
-        self.yvec = np.linspace(0, 1, self.m)
-        self.X, self.Y = np.meshgrid(self.xvec, self.yvec, indexing='ij')
-        self.x = self.X.reshape((self.N, 1))
-        self.y = self.Y.reshape((self.N, 1))
-        self.xy = np.hstack((self.x, self.y))
-        self.shape = (self.m, self.m)
-
-    def mnh(self):
-        """Returns m, N, h"""
-        return self.m, self.N, self.h
-
-    def params(self):
-        """Returns m, N, h, X, Y, x, y"""
-        return self.m, self.N, self.h, self.X, self.Y, self.x, self.y
-
-
-class RK4Timestepper:
-    def __init__(self, T, htt, rhs, u0, update=lambda ts: None, store_v=False):
-        self.mt = int(np.ceil(T / htt))  # number of timesteps to take
-        self.t_vec, self.ht = np.linspace(0, T, self.mt+1, retstep=True)  # mt+1 since the inital value is already given
-        self.T = T
-        self.f = rhs
-        self.t = 0
-        self.t_i = 0
-        self.u = u0
-        self.update = update
-        self.N = len(u0) // 2
-        self.store_v = store_v
-        if store_v:
-            self.vl = np.zeros((self.N, len(self.t_vec)))
-            self.vl[:self.N, 0] = self.v().reshape((self.N,))
-
-    def step(self):
-        self.u, self.t = rk4.step(self.f, self.u, self.t, self.ht)
-        self.t_i += 1
-        self.update(self)
-
-    def run_sim(self):
-        while self.t_i < self.mt:
-            self.step()
-            if self.store_v:
-                self.vl[:self.N, self.t_i] = self.v().reshape((self.N,))
-
-    def v(self):
-        return self.u[:self.N]
-
-    def vt(self):
-        return self.u[self.N:]
+from grid import Grid
+from plotting import plot_v
 
 
 def initial_gaussian(x, y, N, sigma, x0, y0):
@@ -95,7 +24,7 @@ def initial_zero(N):
 def inflow_wave(m, freq, amp):
     omega = 2 * np.pi * freq
 
-    def g(t): return amp * omega * np.sin(freq * 2 * np.pi * np.ones((m, 1)) * t)
+    def g(t): return amp * omega * np.sin(omega * np.ones((m, 1)) * t)
 
     return g
 
@@ -161,7 +90,7 @@ def build_ops(order, A, B, g, grid, output=True):
 
 
 def plot_every(interval, img, title, N, m):
-    def u_plot_every_n(ts: RK4Timestepper):
+    def u_plot_every_n(ts: rk4.RK4Timestepper):
         if (ts.t_i % interval) == 0 or ts.t_i == ts.mt:
             v = ts.v()
             img.set_array(v.reshape((m, m), order='F'))
@@ -206,7 +135,7 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=
         def update(*args):
             pass
 
-    ts = RK4Timestepper(T, ht, rhs, u0, update, store_vl)
+    ts = rk4.RK4Timestepper(T, ht, rhs, u0, update, store_vl)
     ts.run_sim()
 
     return ts, grid

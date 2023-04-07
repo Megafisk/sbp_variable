@@ -1,5 +1,5 @@
 from var_b import *
-import scipy.sparse.linalg as splg
+from plotting import plot_v
 
 
 def run_ref_prob(mb):
@@ -95,7 +95,7 @@ def test_calc_timestep(mb, order):
 
 if __name__ == '__main__':
     # have_fun()
-    ts, g = run_ref_prob(20)
+    ts = run_ref_prob(21)
 
     # print(test_calc_timestep(21, 4))
     pass

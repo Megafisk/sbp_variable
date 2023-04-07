@@ -1,6 +1,4 @@
-"""4th order Runge-Kutta time-stepping.
-This module solves ODEs of the form dv/dt = f(t, v)
-"""
+import numpy as np
 
 
 def step(f, v, t, dt):
@@ -24,3 +22,40 @@ def step(f, v, t, dt):
     t = t + dt
 
     return v, t
+
+
+class RK4Timestepper:
+    def __init__(self, T, htt, rhs, u0, update=lambda ts: None, store_v=False, N=None):
+        self.mt = int(np.ceil(T / htt))  # number of timesteps to take
+        self.t_vec, self.ht = np.linspace(0, T, self.mt+1, retstep=True)  # mt+1 since the inital value is already given
+        self.T = T
+        self.f = rhs
+        self.t = 0
+        self.t_i = 0
+        self.u = u0
+        self.update = update
+        if N:
+            self.N = N
+        else:
+            self.N = len(u0) // 2
+        self.store_v = store_v
+        if store_v:
+            self.vl = np.zeros((self.N, len(self.t_vec)))
+            self.vl[:self.N, 0] = self.v().reshape((self.N,))
+
+    def step(self):
+        self.u, self.t = step(self.f, self.u, self.t, self.ht)
+        self.t_i += 1
+        self.update(self)
+
+    def run_sim(self):
+        while self.t_i < self.mt:
+            self.step()
+            if self.store_v:
+                self.vl[:self.N, self.t_i] = self.v().reshape((self.N,))
+
+    def v(self):
+        return self.u[:self.N]
+
+    def vt(self):
+        return self.u[self.N:]
