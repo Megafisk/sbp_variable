@@ -1,17 +1,20 @@
 from var_b import *
 import scipy.sparse.linalg as splg
 
+
 def run_ref_prob(mb):
-    T = 2
+    T = 1.9
     order = 2
     draw_every_n = 10
-    a_center = 1
-    b_center = 0.25
+    a_center = 0.7
+    b_center = 0.22
     freq = 3
     amp = 0.1
 
-    reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n)
-    plt.show()
+    ts, _ = reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n, True)
+    print(ts.t)
+
+    return ts
 
 
 def have_fun():
@@ -70,8 +73,8 @@ def have_fun():
     plt.pause(0.5)
 
     update = plot_every(draw_every_n, img, title, N, m)
-
-    run_sim(u0, rhs, T, ht, update)
+    ts = RK4Timestepper(T, ht, rhs, u0, N, update)
+    ts.run_sim()
     plt.show()
 
 
@@ -92,6 +95,7 @@ def test_calc_timestep(mb, order):
 
 if __name__ == '__main__':
     # have_fun()
-    run_ref_prob(25)
-    # print(test_calc_timestep(40, 6))
+    ts, g = run_ref_prob(20)
+
+    # print(test_calc_timestep(21, 4))
     pass

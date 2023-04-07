@@ -9,6 +9,8 @@ def step(f, v, t, dt):
     v: current solution
     t: current time
     dt: time step
+
+    @return: v, t
     """
 
     # Compute rates k1-k4

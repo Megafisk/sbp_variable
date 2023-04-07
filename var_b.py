@@ -36,6 +36,7 @@ class Grid:
         self.x = self.X.reshape((self.N, 1))
         self.y = self.Y.reshape((self.N, 1))
         self.xy = np.hstack((self.x, self.y))
+        self.shape = (self.m, self.m)
 
     def mnh(self):
         """Returns m, N, h"""
@@ -44,6 +45,40 @@ class Grid:
     def params(self):
         """Returns m, N, h, X, Y, x, y"""
         return self.m, self.N, self.h, self.X, self.Y, self.x, self.y
+
+
+class RK4Timestepper:
+    def __init__(self, T, htt, rhs, u0, update=lambda ts: None, store_v=False):
+        self.mt = int(np.ceil(T / htt))  # number of timesteps to take
+        self.t_vec, self.ht = np.linspace(0, T, self.mt+1, retstep=True)  # mt+1 since the inital value is already given
+        self.T = T
+        self.f = rhs
+        self.t = 0
+        self.t_i = 0
+        self.u = u0
+        self.update = update
+        self.N = len(u0) // 2
+        self.store_v = store_v
+        if store_v:
+            self.vl = np.zeros((self.N, len(self.t_vec)))
+            self.vl[:self.N, 0] = self.v().reshape((self.N,))
+
+    def step(self):
+        self.u, self.t = rk4.step(self.f, self.u, self.t, self.ht)
+        self.t_i += 1
+        self.update(self)
+
+    def run_sim(self):
+        while self.t_i < self.mt:
+            self.step()
+            if self.store_v:
+                self.vl[:self.N, self.t_i] = self.v().reshape((self.N,))
+
+    def v(self):
+        return self.u[:self.N]
+
+    def vt(self):
+        return self.u[self.N:]
 
 
 def initial_gaussian(x, y, N, sigma, x0, y0):
@@ -125,42 +160,32 @@ def build_ops(order, A, B, g, grid, output=True):
     return rhs
 
 
-def run_sim(u0, rhs, T, ht, update=lambda u, t, t_i, mt: None):
-    mt = int(np.ceil(T / ht) + 1)
-    tvec, ht = np.linspace(0, T, mt, retstep=True)
-
-    u = u0
-    t = 0
-    for t_i in range(mt - 1):
-        # Take one step with the fourth order Runge-Kutta method.
-        u, t = rk4.step(rhs, u, t, ht)
-        update(u, t, t_i, mt)
-
-    return u, t
-
-
 def plot_every(interval, img, title, N, m):
-    def u_plot_every_n(u, t, t_i, mt):
-        if (t_i % interval) == 0 or t_i == mt - 2:
-            v = u[:N]
+    def u_plot_every_n(ts: RK4Timestepper):
+        if (ts.t_i % interval) == 0 or ts.t_i == ts.mt:
+            v = ts.v()
             img.set_array(v.reshape((m, m), order='F'))
-            title.set_text(f't = {t:.2f}')
+            title.set_text(f't = {round(ts.t, 2):.2f}')
             plt.pause(0.01)
 
     return u_plot_every_n
 
 
-def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=-1, zlim=(-0.4, 0.4)):
+def wave_block(grid, a_center, b_center, a0=1, b0=1):
+    A = np.ones(grid.shape) * a0
+    B = np.ones(grid.shape) * b0
+    A[grid.mb:2 * grid.mb + 1, grid.mb:2 * grid.mb + 1] = a_center  # block of different wave speeds
+    B[grid.mb:2 * grid.mb + 1, grid.mb:2 * grid.mb + 1] = b_center
+
+    return A, B
+
+
+def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=-1, store_vl=False, zlim=(-0.4, 0.4)):
     grid = Grid(mb)
     m, N, h, X, Y, x, y = grid.params()
 
     # define wave speeds
-    a0 = 1
-    b0 = 1
-    A = np.ones((m, m)) * a0
-    B = np.ones((m, m)) * b0
-    A[mb:2 * mb + 1, mb:2 * mb + 1] = a_center  # block of different wave speeds
-    B[mb:2 * mb + 1, mb:2 * mb + 1] = b_center
+    A, B = wave_block(grid, a_center, b_center)
 
     u0 = initial_zero(N)
     g = inflow_wave(m, freq, amp)
@@ -181,8 +206,7 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=
         def update(*args):
             pass
 
-    u, t = run_sim(u0, rhs, T, ht, update)
+    ts = RK4Timestepper(T, ht, rhs, u0, update, store_vl)
+    ts.run_sim()
 
-    v = u[:N]
-    v_t = u[N:]
-    return v, v_t, t
+    return ts, grid
