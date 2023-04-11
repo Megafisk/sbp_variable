@@ -53,6 +53,7 @@ class RK4Timestepper:
             self.step()
             if self.store_v:
                 self.vl[:self.N, self.t_i] = self.v().reshape((self.N,))
+        return self
 
     def v(self):
         return self.u[:self.N]

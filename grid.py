@@ -25,3 +25,7 @@ class Grid:
     def params(self):
         """Returns m, N, h, X, Y, x, y"""
         return self.m, self.N, self.h, self.X, self.Y, self.x, self.y
+
+    def get_hor_line(self, v, y):
+        i = np.abs(self.yvec - y).argmin()
+        return v.reshape(self.shape)[:, i]
