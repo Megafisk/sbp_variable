@@ -52,7 +52,7 @@ def calc_timestep(order, A, B, G: Grid, mb_ref=6):
     D = AAI @ (D2x + D2y) - AAI @ HHI @ (
             - eW @ H @ spsp.diags(eW.T @ a) @ d1_W.T + eE @ H @ spsp.diags(eE.T @ a) @ d1_E.T
             + eN @ H @ spsp.diags(eN.T @ a) @ d1_N.T - eS @ H @ spsp.diags(eS.T @ a) @ d1_S.T)
-    c = 1 / np.sqrt(abs(splg.eigs(D, 1)[0][0])) / cg.h
+    c = 1 / np.sqrt(abs(splg.eigs(D, 1)[0][0])) / cg.h  # 0.31 for reference problem
     return 0.5 * 2.8 * c * G.h
 
 
@@ -103,14 +103,26 @@ def plot_every(interval, img, title, N, m):
 def wave_block(grid, a_center, b_center, a0=1, b0=1):
     A = np.ones(grid.shape) * a0
     B = np.ones(grid.shape) * b0
-    A[grid.mb:2 * grid.mb + 1, grid.mb:2 * grid.mb + 1] = a_center  # block of different wave speeds
-    B[grid.mb:2 * grid.mb + 1, grid.mb:2 * grid.mb + 1] = b_center
+    A[(1/3 <= grid.X) & (grid.X <= 2/3) & (1/3 <= grid.Y) & (grid.Y <= 2/3)] = a_center
+    B[(1/3 <= grid.X) & (grid.X <= 2/3) & (1/3 <= grid.Y) & (grid.Y <= 2/3)] = b_center
+
+    # A[grid.mb:2 * grid.mb + 1, grid.mb:2 * grid.mb + 1] = a_center  # block of different wave speeds
+    # B[grid.mb:2 * grid.mb + 1, grid.mb:2 * grid.mb + 1] = b_center
 
     return A, B
 
 
-def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=-1, store_vl=False, zlim=(-0.4, 0.4)):
-    grid = Grid(mb)
+def wave_block_inner(grid, a_center, b_center, a0=1, b0=1):
+    A = np.ones(grid.shape) * a0
+    B = np.ones(grid.shape) * b0
+    A[grid.mb+1:2 * grid.mb, grid.mb+1:2 * grid.mb] = a_center
+    B[grid.mb+1:2 * grid.mb, grid.mb+1:2 * grid.mb] = b_center
+    return A, B
+
+
+def reference_problem(mb, T, order, a_center, b_center, freq, amp,
+                      draw_every_n=-1, store_vl=False, zlim=(-0.4, 0.4), ht=None, is_mb=True):
+    grid = Grid(mb, is_mb)
     m, N, h, X, Y, x, y = grid.params()
 
     # define wave speeds
@@ -121,7 +133,8 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=
 
     rhs = build_ops(order, A, B, g, grid)
 
-    ht = calc_timestep(order, A, B, grid)
+    if ht is None:
+        ht = calc_timestep(order, A, B, grid)
     print(ht)
 
     if draw_every_n > 0:

@@ -2,16 +2,15 @@ from var_b import *
 from plotting import plot_v
 
 
-def run_ref_prob(mb):
+def run_ref_prob(mb, order, ht=None, draw_every_n=10):
     T = 1.9
-    order = 2
-    draw_every_n = 10
     a_center = 0.7
     b_center = 0.22
+    # a_center = b_center = 1
     freq = 3
     amp = 0.1
 
-    ts, _ = reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n, True)
+    ts, _ = reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n, True, ht=ht)
     print(ts.t)
 
     return ts
@@ -73,7 +72,7 @@ def have_fun():
     plt.pause(0.5)
 
     update = plot_every(draw_every_n, img, title, N, m)
-    ts = RK4Timestepper(T, ht, rhs, u0, N, update)
+    ts = rk4.RK4Timestepper(T, ht, rhs, u0, N, update)
     ts.run_sim()
     plt.show()
 
@@ -95,7 +94,8 @@ def test_calc_timestep(mb, order):
 
 if __name__ == '__main__':
     # have_fun()
-    ts = run_ref_prob(21)
+    ts = run_ref_prob(21, 2, draw_every_n=2)
+    plt.show()
 
     # print(test_calc_timestep(21, 4))
     pass
