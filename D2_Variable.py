@@ -16,7 +16,7 @@ def __extend_WESN(Im, op_l, op_r):
     return opW, opE, opS, opN
 
 
-def ops_2d(m, b, ops_1d):
+def ops_2d(m, b, ops_1d, block=False):
     """
     Returns 4th order accurate 2D operators for a square m*m-grid with wave speeds b.
     The operators are HH, D2 in x- and y-directions, and two tuples with e and d-operators
@@ -26,6 +26,7 @@ def ops_2d(m, b, ops_1d):
     @param b: (m*m, 1) matrix containing wave speeds in column-first order
     @param m: number of grid points per direction
     @param ops_1d: 1D operators from D2_Variable_4
+    @param block: if B consists of a square block symmetrical in x and y directions
     """
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
     N = m * m
@@ -40,8 +41,21 @@ def ops_2d(m, b, ops_1d):
     # This makes life very easy for us :)
     I_N = spsp.eye(N, format='lil')
     S = spsp.vstack([I_N[i::m, :] for i in range(m)]).tocsr()
-    D2x = S @ spsp.block_diag([D2_fun(b[ind[:, i]]) for i in range(m)]).tocsr() @ S.T
-    D2y = spsp.block_diag([D2_fun(b[ind[i, :]]) for i in range(m)]).tocsr()
+
+    if block:
+        mid = m // 2
+        b_block = b[m * mid: m * (mid + 1)]
+
+        m_free = np.where(b_block != b_block[0])[0][0]
+        m_block = m - 2 * m_free
+        D2_const = D2_fun(b[:m])
+        D2_block = D2_fun(b_block)
+
+        D2y = spsp.block_diag([D2_const] * m_free + [D2_block] * m_block + [D2_const] * m_free).tocsr()
+        D2x = S @ D2y @ S.T
+    else:
+        D2x = S @ spsp.block_diag([D2_fun(b[ind[:, i]]) for i in range(m)]).tocsr() @ S.T
+        D2y = spsp.block_diag([D2_fun(b[ind[i, :]]) for i in range(m)]).tocsr()
 
     Im = spsp.eye(m)
     HH = spsp.kron(H, H, 'dia')
@@ -115,7 +129,6 @@ def D2_Variable_2(m, h):
     return H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r
 
 
-# noinspection DuplicatedCode
 def D2_Variable_4(m, h):
     """Returns fourth order accurate H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r in sparse format"""
     e_l, e_r = __e_lr(m)
