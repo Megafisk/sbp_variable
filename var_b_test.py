@@ -3,14 +3,14 @@ from plotting import plot_v
 
 
 def run_ref_prob(mb, order, ht=None, draw_every_n=10):
-    T = 1.9
+    T = 1.31
     a_center = 0.7
     b_center = 0.22
     # a_center = b_center = 1
     freq = 3
     amp = 0.1
 
-    ts, _ = reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n, True, ht=ht)
+    ts, g = reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n, 10, ht=ht)
     print(ts.t)
 
     return ts
@@ -94,7 +94,7 @@ def test_calc_timestep(mb, order):
 
 if __name__ == '__main__':
     # have_fun()
-    ts = run_ref_prob(21, 2, draw_every_n=2)
+    ts = run_ref_prob(21, 2, draw_every_n=-1)
     plt.show()
 
     # print(test_calc_timestep(21, 4))

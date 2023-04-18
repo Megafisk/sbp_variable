@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     ht = 0.003
     u0 = np.array([0])
-    ts = rk4.RK4Timestepper(1.9, ht, g, u0, store_v=True, N=1)
+    ts = rk4.RK4Timestepper(1.9, ht, g, u0, save_every=1, N=1)
     ts.run_sim()
     t = ts.t_vec
 

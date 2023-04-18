@@ -121,7 +121,7 @@ def wave_block_inner(grid, a_center, b_center, a0=1, b0=1):
 
 
 def reference_problem(mb, T, order, a_center, b_center, freq, amp,
-                      draw_every_n=-1, store_vl=False, zlim=(-0.4, 0.4), ht=None, is_mb=True):
+                      draw_every_n=-1, save_every=-1, zlim=(-0.4, 0.4), ht=None, is_mb=True):
     grid = Grid(mb, is_mb)
     m, N, h, X, Y, x, y = grid.params()
 
@@ -148,7 +148,9 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp,
         def update(*args):
             pass
 
-    ts = rk4.RK4Timestepper(T, ht, rhs, u0, update, store_vl)
+    if save_every is True:
+        save_every = 1
+    ts = rk4.RK4Timestepper(T, ht, rhs, u0, update, save_every)
     ts.run_sim()
 
     return ts, grid
