@@ -71,7 +71,7 @@ def have_fun():
     plt.draw()
     plt.pause(0.5)
 
-    update = plot_every(draw_every_n, img, title, N, m)
+    update = plot_every(draw_every_n, img, title, m)
     ts = rk4.RK4Timestepper(T, ht, rhs, u0, N, update)
     ts.run_sim()
     plt.show()

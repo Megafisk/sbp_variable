@@ -47,7 +47,7 @@ def calc_timestep(order, A, B, G: Grid, mb_ref=6):
     b = b_interp(cg.xy)
     ops_1d_coarse = D2Var.D2_Variable(cg.m, cg.h, order)
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d_coarse
-    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(cg.m, b, ops_1d_coarse)
+    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(cg.m, b, ops_1d_coarse, True)
     AAI = spsp.diags(1 / a)
     D = AAI @ (D2x + D2y) - AAI @ HHI @ (
             - eW @ H @ spsp.diags(eW.T @ a) @ d1_W.T + eE @ H @ spsp.diags(eE.T @ a) @ d1_E.T
@@ -65,7 +65,7 @@ def build_ops(order, A, B, g, grid, output=True):
         print('building D2...')
     ops_1d = D2Var.D2_Variable(m, h, order)
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
-    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(m, b, ops_1d)
+    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(m, b, ops_1d, True)
     if output:
         print('building DD...')
 
@@ -89,7 +89,7 @@ def build_ops(order, A, B, g, grid, output=True):
     return rhs
 
 
-def plot_every(interval, img, title, N, m):
+def plot_every(interval, img, title, m):
     def u_plot_every_n(ts: rk4.RK4Timestepper):
         if (ts.t_i % interval) == 0 or ts.t_i == ts.mt:
             v = ts.v()
@@ -143,7 +143,7 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp,
         plt.draw()
         plt.pause(0.5)
 
-        update = plot_every(draw_every_n, img, title, N, m)
+        update = plot_every(draw_every_n, img, title, m)
     else:
         def update(*args):
             pass
