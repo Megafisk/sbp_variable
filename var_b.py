@@ -47,7 +47,7 @@ def calc_timestep(order, A, B, G: Grid, mb_ref=6):
     b = b_interp(cg.xy)
     ops_1d_coarse = D2Var.D2_Variable(cg.m, cg.h, order)
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d_coarse
-    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(cg.m, b, ops_1d_coarse, True)
+    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(cg.m, b, ops_1d_coarse)
     AAI = spsp.diags(1 / a)
     D = AAI @ (D2x + D2y) - AAI @ HHI @ (
             - eW @ H @ spsp.diags(eW.T @ a) @ d1_W.T + eE @ H @ spsp.diags(eE.T @ a) @ d1_E.T
@@ -64,8 +64,10 @@ def build_ops(order, A, B, g, grid, output=True):
     if output:
         print('building D2...')
     ops_1d = D2Var.D2_Variable(m, h, order)
+    ops_2d = D2Var.ops_2d(m, b, ops_1d)
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
-    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = D2Var.ops_2d(m, b, ops_1d, True)
+    HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = ops_2d
+
     if output:
         print('building DD...')
 
@@ -121,7 +123,7 @@ def wave_block_inner(grid, a_center, b_center, a0=1, b0=1):
 
 
 def reference_problem(mb, T, order, a_center, b_center, freq, amp,
-                      draw_every_n=-1, save_every=-1, zlim=(-0.4, 0.4), ht=None, is_mb=True):
+                      draw_every_n=-1, save_every=-1, zlim=(-0.4, 0.4), ht=None, is_mb=True, margin=0.5):
     grid = Grid(mb, is_mb)
     m, N, h, X, Y, x, y = grid.params()
 
@@ -134,7 +136,7 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp,
     rhs = build_ops(order, A, B, g, grid)
 
     if ht is None:
-        ht = calc_timestep(order, A, B, grid)
+        ht = calc_timestep(order, A, B, grid, margin=margin)
     print(ht)
 
     if draw_every_n > 0:

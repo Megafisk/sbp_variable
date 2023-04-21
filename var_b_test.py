@@ -2,7 +2,7 @@ from var_b import *
 from plotting import plot_v
 
 
-def run_ref_prob(mb, order, ht=None, draw_every_n=10):
+def run_ref_prob(mb, order=4, **kwargs):
     T = 1.31
     a_center = 0.7
     b_center = 0.22
@@ -10,10 +10,10 @@ def run_ref_prob(mb, order, ht=None, draw_every_n=10):
     freq = 3
     amp = 0.1
 
-    ts, g = reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n, 10, ht=ht)
+    ts, g = reference_problem(mb, T, order, a_center, b_center, freq, amp, **kwargs)
     print(ts.t)
 
-    return ts
+    return ts, g
 
 
 def have_fun():
@@ -79,9 +79,9 @@ def have_fun():
 
 def test_calc_timestep(mb, order):
     a0 = 1
-    a1 = 2
+    a1 = 0.7
     b0 = 1
-    b1 = 0.9
+    b1 = 0.22
 
     grid = Grid(mb)
     A = np.ones((grid.m, grid.m)) * a0
@@ -94,7 +94,7 @@ def test_calc_timestep(mb, order):
 
 if __name__ == '__main__':
     # have_fun()
-    ts = run_ref_prob(21, 2, draw_every_n=-1)
+    ts, g = run_ref_prob(30, 4, draw_every_n=1, margin=1)
     plt.show()
 
     # print(test_calc_timestep(21, 4))

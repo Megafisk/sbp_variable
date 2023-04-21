@@ -16,7 +16,7 @@ def __extend_WESN(Im, op_l, op_r):
     return opW, opE, opS, opN
 
 
-def ops_2d(m, b, ops_1d, block=False):
+def ops_2d(m, b, ops_1d):
     """
     Returns 4th order accurate 2D operators for a square m*m-grid with wave speeds b.
     The operators are HH, D2 in x- and y-directions, and two tuples with e and d-operators
@@ -26,7 +26,6 @@ def ops_2d(m, b, ops_1d, block=False):
     @param b: (m*m, 1) matrix containing wave speeds in column-first order
     @param m: number of grid points per direction
     @param ops_1d: 1D operators from D2_Variable_4
-    @param block: if B consists of a square block symmetrical in x and y directions
     """
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
     N = m * m
@@ -42,20 +41,36 @@ def ops_2d(m, b, ops_1d, block=False):
     I_N = spsp.eye(N, format='lil')
     S = spsp.vstack([I_N[i::m, :] for i in range(m)]).tocsr()
 
-    if block:
-        mid = m // 2
-        b_block = b[m * mid: m * (mid + 1)]
+    rows = []
+    cols = []
+    prev_row = b[ind[:, 0]]
+    prev_col = b[ind[0, :]]
+    D2s = {}  # D2 operator for a given line
+    row_start_i = 0
+    col_start_i = 0
+    for i in range(m):
+        row = b[ind[:, i]]
+        col = b[ind[i, :]]
+        if row.tobytes() not in D2s:
+            D2s[row.tobytes()] = D2_fun(row)
+        if col.tobytes() not in D2s:
+            D2s[col.tobytes()] = D2_fun(col)
+        if not np.array_equal(row, prev_row) and i != 0:
+            rows += [D2s[prev_row.tobytes()]] * (i - row_start_i)
+            prev_row = row
+            row_start_i = i
+        if not np.array_equal(col, prev_col) and i != 0:
+            cols += [D2s[prev_col.tobytes()]] * (i - col_start_i)
+            prev_col = col
+            col_start_i = i
+    # add the last rows and cols, since they're only added during changes
+    rows += [D2s[prev_row.tobytes()]] * (m - row_start_i)
+    cols += [D2s[prev_col.tobytes()]] * (m - col_start_i)
 
-        m_free = np.where(b_block != b_block[0])[0][0]
-        m_block = m - 2 * m_free
-        D2_const = D2_fun(b[:m])
-        D2_block = D2_fun(b_block)
-
-        D2y = spsp.block_diag([D2_const] * m_free + [D2_block] * m_block + [D2_const] * m_free).tocsr()
-        D2x = S @ D2y @ S.T
-    else:
-        D2x = S @ spsp.block_diag([D2_fun(b[ind[:, i]]) for i in range(m)]).tocsr() @ S.T
-        D2y = spsp.block_diag([D2_fun(b[ind[i, :]]) for i in range(m)]).tocsr()
+    D2x = S @ spsp.block_diag(rows) @ S.T
+    D2y = spsp.block_diag(cols)
+    # D2x = S @ spsp.block_diag([D2_fun(b[ind[:, i]]) for i in range(m)]).tocsr() @ S.T
+    # D2y = spsp.block_diag([D2_fun(b[ind[i, :]]) for i in range(m)]).tocsr()
 
     Im = spsp.eye(m)
     HH = spsp.kron(H, H, 'dia')
