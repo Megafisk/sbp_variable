@@ -22,10 +22,11 @@ def load_reference(filename, folder='../ref_sols/'):
     reorder = reorder.reshape((m * m,))
     v_list = ref['v_list'][0, 0][reorder, :]
 
-    params = {key: float(ref[key]) for key in ('a_center', 'b_center', 'freq', 'amp', 't', 'dt')} \
+    params = {key: float(ref[key]) for key in ('a_center', 'b_center', 'freq', 'amp', 't', 'T', 'dt')} \
         | {key: int(ref[key]) for key in ('mb', 'mt')}
     params['m'] = m
     params['N'] = m * m
+    params['frames'] = ref['saved'][0, 0].ravel()
     return v_list, params
 
 
@@ -42,7 +43,7 @@ def interpolate(vl, g_ref: Grid, g: Grid):
         return vl[rows, :]
     else:
         p = (g_ref.xvec, g_ref.yvec)
-        return np.hstack([interpn(p, v.reshape(g_ref.shape), g.xy, method='cubic').reshape(g.N, 1) for v in vl.T])
+        return np.hstack([interpn(p, v.reshape(g_ref.shape), g.xy, method='splinef2d').reshape(g.N, 1) for v in vl.T])
 
 
 def error(v, v_ref, g: Grid):
