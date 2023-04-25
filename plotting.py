@@ -1,3 +1,4 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.widgets import Slider
@@ -5,7 +6,7 @@ import numpy as np
 from grid import Grid
 
 
-def plot_v(v, m, vlim=(-0.4, 0.4)):
+def plot_v(v, m, vlim=(-0.4, 0.4), draw_block=True):
     ax: plt.Axes
     fig: plt.Figure
     fig, ax = plt.subplots()
@@ -16,6 +17,9 @@ def plot_v(v, m, vlim=(-0.4, 0.4)):
     fig.colorbar(img, ax=ax)
     plt.xlabel("x")
     plt.ylabel("y")
+    if draw_block:
+        rect = matplotlib.patches.Rectangle((1/3, 1/3), 1/3, 1/3, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
     return fig, ax, img
 
 
@@ -86,3 +90,23 @@ def compare_line(tvec, grids, vls, labels):
     y_slider.on_changed(update)
 
     plt.show()
+    return fig, ax
+
+
+# transformation functions, needs to handle division by zero
+def m2h(m): return np.divide(1, m-1, out=np.full_like(m, np.Inf), where=m != 1, casting='unsafe')
+def h2m(h): return np.divide(1, h, out=np.full_like(h, np.Inf), where=h != 0, casting='unsafe') + 1
+
+
+def plot_errors(hs, ers):
+    fig: plt.Figure
+    ax: plt.Axes
+    fig, ax = plt.subplots()
+
+    ax.loglog(hs, ers, 'x')
+    ax2 = ax.secondary_xaxis('top', functions=(h2m, m2h))
+    ax2.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ax2.set_xlabel('m')
+    ax.set_xlabel('h')
+
+    return fig, ax, ax2
