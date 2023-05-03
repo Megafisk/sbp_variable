@@ -9,6 +9,8 @@ import rungekutta4 as rk4
 from grid import Grid
 from plotting import plot_v
 
+import time
+
 
 def initial_gaussian(x, y, N, sigma, x0, y0):
     v0 = np.exp(-(x - x0) ** 2 / sigma ** 2 - (y - y0) ** 2 / sigma ** 2)
@@ -62,7 +64,7 @@ def build_ops(order, A, B, g, grid, output=True):
     b = B.reshape((N,))
 
     if output:
-        print('building D2...')
+        print(f'building order {order} operators with m={grid.m} points...')
     ops_1d = D2Var.D2_Variable(m, h, order)
     ops_2d = D2Var.ops_2d(m, b, ops_1d)
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
@@ -102,33 +104,36 @@ def plot_every(interval, img, title, m):
     return u_plot_every_n
 
 
-def wave_block(grid, a_center, b_center, a0=1, b0=1):
-    A = np.ones(grid.shape) * a0
-    B = np.ones(grid.shape) * b0
-    A[(1/3 <= grid.X) & (grid.X <= 2/3) & (1/3 <= grid.Y) & (grid.Y <= 2/3)] = a_center
-    B[(1/3 <= grid.X) & (grid.X <= 2/3) & (1/3 <= grid.Y) & (grid.Y <= 2/3)] = b_center
+def wave_block(g, a_center, b_center, a0=1, b0=1, block_type='outer'):
+    A = np.ones(g.shape) * a0
+    B = np.ones(g.shape) * b0
+    ind = np.zeros(g.shape, bool)
+    if g.m % 3 != 1:
+        ind = (1/3 < g.X) & (g.X < 2/3) & (1/3 < g.Y) & (g.Y < 2/3)
+    elif block_type == 'outer':
+        ind[g.mb:2 * g.mb + 1, g.mb:2 * g.mb + 1] = True
+    elif block_type == 'inner':
+        ind[g.mb + 1:2 * g.mb, g.mb + 1:2 * g.mb] = True
+    else:
+        raise ValueError(f'Invalid block type: {block_type}')
 
-    # A[grid.mb:2 * grid.mb + 1, grid.mb:2 * grid.mb + 1] = a_center  # block of different wave speeds
-    # B[grid.mb:2 * grid.mb + 1, grid.mb:2 * grid.mb + 1] = b_center
+    A[ind] = a_center
+    B[ind] = b_center
 
     return A, B
 
 
-def wave_block_inner(grid, a_center, b_center, a0=1, b0=1):
-    A = np.ones(grid.shape) * a0
-    B = np.ones(grid.shape) * b0
-    A[grid.mb+1:2 * grid.mb, grid.mb+1:2 * grid.mb] = a_center
-    B[grid.mb+1:2 * grid.mb, grid.mb+1:2 * grid.mb] = b_center
-    return A, B
-
-
-def reference_problem(mb, T, order, a_center, b_center, freq, amp,
-                      draw_every_n=-1, save_every=-1, zlim=(-0.4, 0.4), ht=None, is_mb=True, margin=0.5):
+def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=-1, save_every=-1,
+                      zlim=(-0.4, 0.4), ht=None, is_mb=True, margin=0.5, block_type='outer'):
+    start = time.time()
     grid = Grid(mb, is_mb)
     m, N, h, X, Y, x, y = grid.params()
 
     # define wave speeds
-    A, B = wave_block(grid, a_center, b_center)
+    if isinstance(a_center, np.ndarray):
+        A, B = a_center, b_center
+    else:
+        A, B = wave_block(grid, a_center, b_center, block_type=block_type)
 
     u0 = initial_zero(N)
     g = inflow_wave(m, freq, amp)
@@ -154,5 +159,7 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp,
         save_every = 1
     ts = rk4.RK4Timestepper(T, ht, rhs, u0, update, save_every)
     ts.run_sim()
+
+    print(f'Done, elapsed time={time.time() - start:.3f} s')
 
     return ts, grid
