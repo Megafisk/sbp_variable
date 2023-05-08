@@ -6,15 +6,34 @@ import numpy as np
 from grid import Grid
 
 
-def plot_v(v, m, vlim=(-0.4, 0.4), draw_block=True):
-    ax: plt.Axes
-    fig: plt.Figure
-    fig, ax = plt.subplots()
+def plot_on(ax: plt.Axes, v, m, vlim, title='', draw_block=True):
+    if isinstance(vlim, (float, int)):
+        vlim = (-vlim, vlim)
     img = ax.imshow(v.reshape((m, m), order='F'),
                     origin='lower',
                     extent=[0, 1, 0, 1],
                     vmin=vlim[0], vmax=vlim[1])
-    fig.colorbar(img, ax=ax)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.figure.colorbar(img, ax=ax)
+    ax.set_title(title)
+    if draw_block:
+        rect = matplotlib.patches.Rectangle((1/3, 1/3), 1/3, 1/3, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+    return img
+
+
+def plot_v(v, m, vlim=0.4, draw_block=True):
+    ax: plt.Axes
+    fig: plt.Figure
+    fig, ax = plt.subplots()
+    if isinstance(vlim, (float, int)):
+        vlim = (-vlim, vlim)
+    img = ax.imshow(v.reshape((m, m), order='F'),
+                    origin='lower',
+                    extent=[0, 1, 0, 1],
+                    vmin=vlim[0], vmax=vlim[1])
+    ax.figure.colorbar(img, ax=ax)
     plt.xlabel("x")
     plt.ylabel("y")
     if draw_block:
@@ -23,7 +42,7 @@ def plot_v(v, m, vlim=(-0.4, 0.4), draw_block=True):
     return fig, ax, img
 
 
-def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4)):
+def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, **kwargs):
     ax: plt.Axes
     fig: plt.Figure
     fig, ax = plt.subplots()
@@ -37,7 +56,7 @@ def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4)):
                        vmin=vlim[0], vmax=vlim[1])
         ims.append([im])
 
-    ani = anim.ArtistAnimation(fig, ims, interval=10, blit=True)
+    ani = anim.ArtistAnimation(fig, ims, blit=True, interval=interval, **kwargs)
     # fig.colorbar(img, ax=ax)
     plt.show()
 
@@ -103,10 +122,11 @@ def plot_errors(hs, ers):
     ax: plt.Axes
     fig, ax = plt.subplots()
 
-    ax.loglog(hs, ers, 'x')
+    lines = ax.loglog(hs, ers, 'x')
     ax2 = ax.secondary_xaxis('top', functions=(h2m, m2h))
     ax2.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ax2.get_xaxis().set_minor_formatter(matplotlib.ticker.ScalarFormatter())
     ax2.set_xlabel('m')
     ax.set_xlabel('h')
 
-    return fig, ax, ax2
+    return fig, ax, ax2, lines

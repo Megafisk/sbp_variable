@@ -12,9 +12,9 @@ from plotting import plot_v
 import time
 
 
-def initial_gaussian(x, y, N, sigma, x0, y0):
-    v0 = np.exp(-(x - x0) ** 2 / sigma ** 2 - (y - y0) ** 2 / sigma ** 2)
-    v_t = np.zeros((N, 1))
+def initial_gaussian(g, sigma, x0, y0, a):
+    v0 = a * np.exp(-(g.x - x0) ** 2 / sigma ** 2 - (g.y - y0) ** 2 / sigma ** 2)
+    v_t = np.zeros((g.N, 1))
     u = np.vstack((v0, v_t))
     return u
 
@@ -37,7 +37,7 @@ def inflow_gaussian(m, amp, w, t0):
     return g
 
 
-def calc_timestep(order, A, B, G: Grid, mb_ref=6):
+def calc_timestep(order, A, B, G: Grid, mb_ref=6, margin=0.5):
     """
     Calculates timestep from the D-operator for a coarse grid with mb = mb_ref points
     per block, then assuming linear converge. Will slightly overestimate the correct value by maybe 0-2%.
@@ -54,8 +54,8 @@ def calc_timestep(order, A, B, G: Grid, mb_ref=6):
     D = AAI @ (D2x + D2y) - AAI @ HHI @ (
             - eW @ H @ spsp.diags(eW.T @ a) @ d1_W.T + eE @ H @ spsp.diags(eE.T @ a) @ d1_E.T
             + eN @ H @ spsp.diags(eN.T @ a) @ d1_N.T - eS @ H @ spsp.diags(eS.T @ a) @ d1_S.T)
-    c = 1 / np.sqrt(abs(splg.eigs(D, 1)[0][0])) / cg.h  # 0.31 for reference problem
-    return 0.5 * 2.8 * c * G.h
+    c = 1 / np.sqrt(abs(splg.eigs(D, 1)[0][0])) / cg.h  # 0.355, 0.31, 0.188 for order 2, 4, 6 for ref problem
+    return margin * 2.8 * c * G.h
 
 
 def build_ops(order, A, B, g, grid, output=True):
@@ -93,11 +93,13 @@ def build_ops(order, A, B, g, grid, output=True):
     return rhs
 
 
-def plot_every(interval, img, title, m):
+def plot_every(interval, img, title, m, ht):
+    if isinstance(interval, float):
+        interval = int(np.ceil(interval / ht))  # TODO use same generation as save_every in rk4
+
     def u_plot_every_n(ts: rk4.RK4Timestepper):
         if (ts.t_i % interval) == 0 or ts.t_i == ts.mt:
-            v = ts.v()
-            img.set_array(v.reshape((m, m), order='F'))
+            img.set_array(ts.v().reshape((m, m), order='F'))
             title.set_text(f't = {round(ts.t, 2):.2f}')
             plt.pause(0.01)
 
@@ -145,12 +147,12 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=
     print(ht)
 
     if draw_every_n > 0:
-        fig, ax, img = plot_v(u0[:N], m, zlim)
+        fig, ax, img = plot_v(u0[:N], m, zlim, draw_block=True)
         title = plt.title("t = 0.00")
         plt.draw()
         plt.pause(0.5)
 
-        update = plot_every(draw_every_n, img, title, m)
+        update = plot_every(draw_every_n, img, title, m, ht)
     else:
         def update(*args):
             pass

@@ -5,8 +5,12 @@ from scipy.interpolate import interpn
 
 from var_b import Grid
 
+FOLDER = '/Users/hermanbergkvist/Documents/Kanddata/'
+REF_FOLDER = FOLDER + 'ref_sols/'
+CALC_FOLDER = FOLDER + 'calc/'
 
-def load_reference(filename, folder='../ref_sols/'):
+
+def load_reference(filename, folder=REF_FOLDER):
     ref = spio.loadmat(folder + filename)['ref']
     p = ref['points'][0, 0]
 
@@ -27,6 +31,7 @@ def load_reference(filename, folder='../ref_sols/'):
     params['m'] = m
     params['N'] = m * m
     params['frames'] = ref['saved'][0, 0].ravel()
+    params['saved_times'] = np.linspace(0, params['T'], params['mt'] + 1)[params['frames']]
     return v_list, params
 
 
@@ -57,3 +62,8 @@ def error_interp(v, v_ref, g, g_ref):
 
 def errors_interp(gs, vs, v_ref, g_ref):
     return np.vstack([error_interp(vs[i], v_ref, gs[i], g_ref) for i in range(len(vs))]).T
+
+
+def save_conv(fn, ers, mbs, orders, q, params, **other):
+    mdict = {'ers': ers, 'mbs': mbs, 'orders': orders, 'q': q, **params, **other}
+    spio.savemat(CALC_FOLDER + fn, mdict)
