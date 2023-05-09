@@ -58,15 +58,18 @@ def calc_timestep(order, A, B, G: Grid, mb_ref=6, margin=0.5):
     return margin * 2.8 * c * G.h
 
 
-def build_ops(order, A, B, g, grid, output=True):
+def build_ops(order, A, B, g, grid, output=True, retops=False, ops=None):
     m, N, h = grid.mnh()
     a = A.reshape((N,))
     b = B.reshape((N,))
 
     if output:
         print(f'building order {order} operators with m={grid.m} points...')
-    ops_1d = D2Var.D2_Variable(m, h, order)
-    ops_2d = D2Var.ops_2d(m, b, ops_1d)
+    if ops is None:
+        ops_1d = D2Var.D2_Variable(m, h, order)
+        ops_2d = D2Var.ops_2d(m, b, ops_1d)
+    else:
+        ops_1d, ops_2d = ops
     H, HI, D1, D2_fun, e_l, e_r, d1_l, d1_r = ops_1d
     HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N) = ops_2d
 
@@ -90,7 +93,9 @@ def build_ops(order, A, B, g, grid, output=True):
 
     if output:
         print('operators done!')
-    return rhs
+    if not retops:
+        return rhs
+    return DD, (D, G, E, AAI), ops_1d, ops_2d
 
 
 def plot_every(interval, img, title, m, ht):
@@ -125,8 +130,8 @@ def wave_block(g, a_center, b_center, a0=1, b0=1, block_type='outer'):
     return A, B
 
 
-def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=-1, save_every=-1,
-                      zlim=(-0.4, 0.4), ht=None, is_mb=True, margin=0.5, block_type='outer'):
+def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every=-1, save_every=-1,
+                      zlim=(-0.4, 0.4), ht=None, is_mb=True, margin=0.5, block_type='outer', ops=None):
     start = time.time()
     grid = Grid(mb, is_mb)
     m, N, h, X, Y, x, y = grid.params()
@@ -140,19 +145,19 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every_n=
     u0 = initial_zero(N)
     g = inflow_wave(m, freq, amp)
 
-    rhs = build_ops(order, A, B, g, grid)
+    rhs = build_ops(order, A, B, g, grid, ops=ops)
 
     if ht is None:
         ht = calc_timestep(order, A, B, grid, margin=margin)
     print(ht)
 
-    if draw_every_n > 0:
+    if draw_every > 0:
         fig, ax, img = plot_v(u0[:N], m, zlim, draw_block=True)
         title = plt.title("t = 0.00")
         plt.draw()
         plt.pause(0.5)
 
-        update = plot_every(draw_every_n, img, title, m, ht)
+        update = plot_every(draw_every, img, title, m, ht)
     else:
         def update(*args):
             pass

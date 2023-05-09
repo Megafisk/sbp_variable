@@ -63,8 +63,8 @@ def close_comp(vl_ref, params, mbs, order=2, **kwargs):
     else:
         fi = [-1]
 
-    res = [var_b.reference_problem(mb, params['T'], order, params['a_center'], params['b_center'], 3, 0.1,
-                                   **kwargs) for mb in mbs]
+    res = [var_b.reference_problem(mb, params['T'], order, params['a_center'], params['b_center'], 3, 0.1, **kwargs)
+           for mb in mbs]
 
     grids = [g for _, g in res]
     vls = [ts.vl if 'save_every' in kwargs else ts.v() for ts, _ in res]
@@ -120,9 +120,3 @@ def compare_timesteps():
     vvl = vl[:, :2 * ts1.vl.shape[1]:2]
     plotting.compare_line(ts1.t_vec, [g_ref, g, g, g], [vvl, ts1.vl, ts2.vl, ts3.vl], ['ref', 1, 0.5, 0.25])
     pass
-
-
-def calculate_q(ers, gs):
-    ms = np.array([g.m for g in gs]).T
-    return -np.log10(ers[:-1] / ers[1:]).T / np.log10(ms[:-1] / ms[1:])
-

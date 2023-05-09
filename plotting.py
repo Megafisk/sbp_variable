@@ -120,7 +120,7 @@ def h2m(h): return np.divide(1, h, out=np.full_like(h, np.Inf), where=h != 0, ca
 def plot_errors(hs, ers):
     fig: plt.Figure
     ax: plt.Axes
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(layout="constrained")
 
     lines = ax.loglog(hs, ers, 'x')
     ax2 = ax.secondary_xaxis('top', functions=(h2m, m2h))

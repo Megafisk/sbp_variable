@@ -2,6 +2,7 @@ import scipy.io as spio
 import numpy as np
 import numpy.linalg as nplg
 from scipy.interpolate import interpn
+from scipy.optimize import curve_fit
 
 from var_b import Grid
 
@@ -62,6 +63,15 @@ def error_interp(v, v_ref, g, g_ref):
 
 def errors_interp(gs, vs, v_ref, g_ref):
     return np.vstack([error_interp(vs[i], v_ref, gs[i], g_ref) for i in range(len(vs))]).T
+
+
+def calculate_q(ers, gs):
+    ms = np.array([g.m for g in gs]).T
+    return -np.log10(ers[:-1] / ers[1:]).T / np.log10(ms[:-1] / ms[1:])
+
+
+def error_conv(x, c, q): return c * (x ** q)
+def fit_q(hs, ers): return curve_fit(error_conv, hs, ers)
 
 
 def save_conv(fn, ers, mbs, orders, q, params, **other):

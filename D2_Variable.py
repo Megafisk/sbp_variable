@@ -22,7 +22,7 @@ def ops_2d(m, b, ops_1d):
     The operators are HH, D2 in x- and y-directions, and two tuples with e and d-operators
     for W, E, S, N.
 
-    @return: HH, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N)
+    @return: HH, HHI, (D2x, D2y), (eW, eE, eS, eN), (d1_W, d1_E, d1_S, d1_N)
     @param b: (m*m, 1) matrix containing wave speeds in column-first order
     @param m: number of grid points per direction
     @param ops_1d: 1D operators from D2_Variable_4
