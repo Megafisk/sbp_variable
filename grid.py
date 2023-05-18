@@ -9,6 +9,8 @@ class Grid:
             self.m = 3 * mb + 1
         else:
             self.m = m
+            if m % 3 == 1:
+                self.mb = (m - 1) // 3
         self.N = self.m ** 2
         self.xvec, self.h = np.linspace(0, 1, self.m, retstep=True)
         self.yvec = np.linspace(0, 1, self.m)

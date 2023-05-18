@@ -111,21 +111,21 @@ def plot_every(interval, img, title, m, ht):
     return u_plot_every_n
 
 
-def wave_block(g, a_center, b_center, a0=1, b0=1, block_type='outer'):
+def wave_block(g, a_center, b_center, a0=1, b0=1, block_type='outer', block_margin=1, **kwargs):
     A = np.ones(g.shape) * a0
     B = np.ones(g.shape) * b0
-    ind = np.zeros(g.shape, bool)
     if g.m % 3 != 1:
-        ind = (1/3 < g.X) & (g.X < 2/3) & (1/3 < g.Y) & (g.Y < 2/3)
+        i1 = np.argmax(g.xvec > 1/3)
+        i2 = np.argmax(g.xvec > 2/3)
+        sl = slice(i1, i2)
     elif block_type == 'outer':
-        ind[g.mb:2 * g.mb + 1, g.mb:2 * g.mb + 1] = True
+        sl = slice(g.mb + 1 - block_margin, 2 * g.mb + block_margin)
     elif block_type == 'inner':
-        ind[g.mb + 1:2 * g.mb, g.mb + 1:2 * g.mb] = True
+        sl = slice(g.mb + block_margin, 2 * g.mb + 1 - block_margin)
     else:
         raise ValueError(f'Invalid block type: {block_type}')
-
-    A[ind] = a_center
-    B[ind] = b_center
+    A[sl, sl] = a_center
+    B[sl, sl] = b_center
 
     return A, B
 
