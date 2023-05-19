@@ -23,16 +23,16 @@ def initial_zero(N):
     return np.zeros((2 * N, 1))
 
 
-def inflow_wave(m, freq, amp):
+def inflow_wave(freq, amp):
     omega = 2 * np.pi * freq
 
-    def g(t): return amp * omega * np.sin(omega * np.ones((m, 1)) * t)
+    def g(t): return amp * omega * np.sin(omega * t)
 
     return g
 
 
-def inflow_gaussian(m, amp, w, t0):
-    def g(t): return amp * -2 * (t - t0) / (w ** 2) * np.exp(-(t - t0) ** 2 / (w ** 2)) * np.ones((m, 1))
+def inflow_gaussian(amp, w, t0):
+    def g(t): return amp * -2 * (t - t0) / (w ** 2) * np.exp(-(t - t0) ** 2 / (w ** 2))
 
     return g
 
@@ -115,8 +115,8 @@ def wave_block(g, a_center, b_center, a0=1, b0=1, block_type='outer', block_marg
     A = np.ones(g.shape) * a0
     B = np.ones(g.shape) * b0
     if g.m % 3 != 1:
-        i1 = np.argmax(g.xvec > 1/3)
-        i2 = np.argmax(g.xvec > 2/3)
+        i1 = np.argmax(g.xvec > 1/3) - (block_margin - 1)
+        i2 = np.argmax(g.xvec > 2/3) + (block_margin - 1)
         sl = slice(i1, i2)
     elif block_type == 'outer':
         sl = slice(g.mb + 1 - block_margin, 2 * g.mb + block_margin)
@@ -130,22 +130,52 @@ def wave_block(g, a_center, b_center, a0=1, b0=1, block_type='outer', block_marg
     return A, B
 
 
+def mixed_block(g: Grid, order, a_center, b_center, block_margin=1, **kwargs):
+    si = slice(g.mb + block_margin, 2 * g.mb + 1 - block_margin)
+    so = slice(g.mb, 2 * g.mb + 1)
+
+    Ao = np.ones(g.shape)  # use inner for A
+    Ao[so, so] = a_center
+    Bo = np.ones(g.shape)
+    Bo[so, so] = b_center
+
+    Bw = np.ones(g.shape)
+    Bt = np.ones(g.shape)
+    wide = np.zeros(g.shape, bool)
+    tall = np.zeros(g.shape, bool)
+    wide[so, si] = True
+    tall[si, so] = True
+    Bw[wide] = b_center
+    Bt[tall] = b_center
+
+    # inner, so Dx should be tall, and Dy wide
+    ops_1d = D2Var.D2_Variable(g.m, g.h, order)
+    ops_2d = list(D2Var.ops_2d(g.m, Bt.reshape((g.N,)), ops_1d))
+    D2y_wide = D2Var.ops_2d(g.m, Bw.reshape((g.N,)), ops_1d)[2][1]
+
+    ops_2d[2] = (ops_2d[2][0], D2y_wide)
+    return Ao, Bo, (ops_1d, ops_2d)
+
+
 def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every=-1, save_every=-1,
-                      zlim=(-0.4, 0.4), ht=None, is_mb=True, margin=0.5, block_type='outer', ops=None):
+                      zlim=(-0.4, 0.4), ht=None, is_mb=True, margin=0.5, block_type='outer', **kwargs):
     start = time.time()
     grid = Grid(mb, is_mb)
     m, N, h, X, Y, x, y = grid.params()
 
+    ops = None
     # define wave speeds
     if isinstance(a_center, np.ndarray):
         A, B = a_center, b_center
+    elif block_type == 'mixed':
+        A, B, ops = mixed_block(grid, order, a_center, b_center, **kwargs)
     else:
-        A, B = wave_block(grid, a_center, b_center, block_type=block_type)
+        A, B = wave_block(grid, a_center, b_center, block_type=block_type, **kwargs)
 
     u0 = initial_zero(N)
-    g = inflow_wave(m, freq, amp)
+    g = inflow_wave(freq, amp)
 
-    rhs = build_ops(order, A, B, g, grid, ops=ops)
+    rhs = build_ops(order, A, B, g, grid, ops=ops, **kwargs)
 
     if ht is None:
         ht = calc_timestep(order, A, B, grid, margin=margin)

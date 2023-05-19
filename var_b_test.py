@@ -6,42 +6,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import rungekutta4 as rk4
 import D2_Variable as D2Var
-
-
-def block_corner_inner(mb, order, T, a_center, b_center, block_margin=1, **kwargs):
-    g = grid.Grid(mb)
-    si = slice(g.mb + block_margin, 2 * g.mb + 1 - block_margin)
-    so = slice(g.mb, 2 * g.mb + 1)
-
-    Ao = np.ones(g.shape)  # use inner for A
-    Ao[so, so] = a_center
-    Bo = np.ones(g.shape)
-    Bo[so, so] = b_center
-
-    Bw = np.ones(g.shape)
-    Bt = np.ones(g.shape)
-    wide = np.zeros(g.shape, bool)
-    tall = np.zeros(g.shape, bool)
-    wide[so, si] = True
-    tall[si, so] = True
-    Bw[wide] = b_center
-    Bt[tall] = b_center
-
-    # inner, so Dx should be tall, and Dy wide
-    ops_1d = D2Var.D2_Variable(g.m, g.h, order)
-    ops_2d = list(D2Var.ops_2d(g.m, Bt.reshape((g.N,)), ops_1d))
-    D2y_wide = D2Var.ops_2d(g.m, Bw.reshape((g.N,)), ops_1d)[2][1]
-
-    ops_2d[2] = (ops_2d[2][0], D2y_wide)
-
-    ts, g = var_b.reference_problem(g.mb, T, order, Ao, Bo, 3, 0.1, ops=(ops_1d, ops_2d), **kwargs)
-    return ts, g
+from scipy.interpolate import interpn
 
 
 def run_ref_prob(mb, order=4, **kwargs):
     T = 0.75
     a_center = 10
-    b_center = 1000
+    b_center = 100
     # a_center = b_center = 1
     freq = 3
     amp = 0.1
@@ -52,12 +23,16 @@ def run_ref_prob(mb, order=4, **kwargs):
 
 
 def have_fun():
-    mb = 30
+    # mb = 30
     T = 5
     order = 2
     draw_every_n = 0.01
 
-    g = Grid(mb)
+    # g = Grid(mb)
+    Bc = plt.imread('B.tiff') / 255
+    gc = grid.Grid(Bc.shape[0], False)
+    g = grid.Grid(200, False)
+
     m, N, h, X, Y, x, y = g.params()
 
     # define wave speeds
@@ -66,18 +41,25 @@ def have_fun():
     b0 = 1
     b1 = 0.2
     A = np.ones((m, m)) * a0
-    B = np.ones((m, m)) * b0
-    # B[mb:2 * mb + 1, mb:2 * mb + 1] = b1  # block of different wave speeds
+    # B = np.ones((m, m)) * b0
+    # B[mb:mb + 4, :] = b1  # block of different wave speeds
     # A[mb:2*mb, mb:2*mb] = a1
     # B[(X - Y < 1 / 3) & (X - Y > 0) & (1 / 3 < X) & (X < 2 / 3) & (1 / 3 < Y) & (Y < 2 / 3)] = b1
     # B[(1 / 3 < X) & (X < 2 / 3)] = b1
+
+    gc = grid.Grid(20, False)
+    Bc = 0.03 + 0.2 * np.random.random(gc.shape)
+    # Bc[Bc == 0] = b1
+    B = interpn((gc.xvec, gc.yvec), Bc, g.xy, method='nearest').reshape(g.shape)
+    B[X < 0.4] = 1
+    plot_v(B, g.m, (0, np.max(B)))
 
     zlow = -0.4
     zhigh = 0.4
 
     # initial data
     sigma = 0.05
-    x0 = 0.6
+    x0 = 0.1
     y0 = 0.1
     # u0 = initial_zero(N)
     u0 = var_b.initial_gaussian(g, sigma, x0, y0, 1)
@@ -91,13 +73,13 @@ def have_fun():
     # wave inflow data
     freq = 3
     amp = 0
-    g_in = var_b.inflow_wave(m, freq, amp)
+    g_in = var_b.inflow_wave(freq, amp)
 
     # time stuff
     # print("calculating eigs...")
     # ht = 0.5 * 2.8 / np.sqrt(abs(spsplg.eigs(D, 1)[0][0]))
     # print("eigs done!")
-    ht = 0.14 / mb
+    ht = 0.42 / g.m
 
     rhs = var_b.build_ops(order, A, B, g_in, g)
 
@@ -149,10 +131,10 @@ def line(g, ac, bc, pos):
 
 
 if __name__ == '__main__':
-    have_fun()
-    # ts, g = run_ref_prob(10, 2, draw_every_n=0.01)
-    # ts, g = block_corner_inner(2, 10, 100, 10, 0.75, draw_every=0.01)
-    # plt.show()
+    # have_fun()
+    # ts, g = var_b.reference_problem(40, 2, 2, 1, 0.3, 3, 0.1, draw_every=0.01, source_pos=(0.123, 0.453), phi_order=4)
+    # run_ref_prob(90, 2, is_mb=False)
 
+    plt.show()
     # print(test_calc_timestep(21, 4))
     pass

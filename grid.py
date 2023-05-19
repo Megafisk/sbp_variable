@@ -31,3 +31,9 @@ class Grid:
     def get_hor_line(self, v, y):
         i = np.abs(self.yvec - y).argmin()
         return v.reshape(self.shape)[:, i]
+
+    @staticmethod
+    def get_attr(g_list, attr_name):
+        if not isinstance(g_list, np.ndarray):
+            g_list = np.array(g_list)
+        return np.array([getattr(g, attr_name) for g in g_list.flatten()]).reshape(g_list.shape)
