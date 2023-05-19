@@ -23,23 +23,23 @@ def plot_on(ax: plt.Axes, v, m, vlim, title='', draw_block=True):
     return img
 
 
-def plot_v(v, m, vlim=0.4, draw_block=True):
+def plot_v(v, m, vlim=0.4, draw_block=True, ret_cbar=False):
     ax: plt.Axes
     fig: plt.Figure
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(layout='constrained')
     if isinstance(vlim, (float, int)):
         vlim = (-vlim, vlim)
     img = ax.imshow(v.reshape((m, m), order='F'),
                     origin='lower',
                     extent=[0, 1, 0, 1],
                     vmin=vlim[0], vmax=vlim[1])
-    ax.figure.colorbar(img, ax=ax)
+    cbar = ax.figure.colorbar(img, ax=ax)
     plt.xlabel("x")
     plt.ylabel("y")
     if draw_block:
         rect = matplotlib.patches.Rectangle((1/3, 1/3), 1/3, 1/3, edgecolor='r', facecolor='none')
         ax.add_patch(rect)
-    return fig, ax, img
+    return (fig, ax, img) if not ret_cbar else (fig, ax, img, cbar)
 
 
 def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, **kwargs):
@@ -117,16 +117,21 @@ def m2h(m): return np.divide(1, m-1, out=np.full_like(m, np.Inf), where=m != 1, 
 def h2m(h): return np.divide(1, h, out=np.full_like(h, np.Inf), where=h != 0, casting='unsafe') + 1
 
 
-def plot_errors(hs, ers):
+def plot_errors(hs, ers, fmt='x'):
     fig: plt.Figure
     ax: plt.Axes
     fig, ax = plt.subplots(layout="constrained")
+    if isinstance(hs, np.ndarray) and isinstance(hs.flatten()[0], Grid):
+        hs = np.array([g.h for g in hs.flatten()]).reshape(hs.shape)
 
-    lines = ax.loglog(hs, ers, 'x')
+    lines = ax.loglog(hs, ers, fmt)
     ax2 = ax.secondary_xaxis('top', functions=(h2m, m2h))
     ax2.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
     ax2.get_xaxis().set_minor_formatter(matplotlib.ticker.ScalarFormatter())
-    ax2.set_xlabel('m')
-    ax.set_xlabel('h')
+
+    ax.grid(visible=True, which='both', linestyle=':')
+    ax.set_xlabel('$h$')
+    ax2.set_xlabel('$m$')
+    ax.set_ylabel('$||e||_h \\, / \\, ||v||$')
 
     return fig, ax, ax2, lines

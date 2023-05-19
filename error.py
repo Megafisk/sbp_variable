@@ -13,7 +13,7 @@ def io(mb, T, ac, bc, ht, order=4, **kwargs):
     g = grid.Grid(mb)
 
     u0 = var_b.initial_zero(g.N)
-    g_in = var_b.inflow_wave(g.m, 3, 0.1)
+    g_in = var_b.inflow_wave(3, 0.1)
 
     Ai, Bi = var_b.wave_block(g, ac, bc, 'inner')
     Ao, Bo = var_b.wave_block(g, ac, bc, 'outer')
@@ -56,10 +56,13 @@ def run_mbs(mbs, **kwargs):
 def close_comp(vl_ref, params, mbs, order=2, **kwargs):
     """Compares grids of similar size"""
     g_ref = grid.Grid(params['mb'] - 1)  # 60 * 3 + 1
-    if 'ht' not in kwargs:
-        kwargs['ht'] = params['dt']
     if 'save_every' in kwargs:
-        fi = np.in1d(params['frames'], kwargs['save_every']).nonzero()[0]
+        kwargs['ht'] = params['dt']
+        if kwargs['save_every'] is True:
+            kwargs['save_every'] = params['frames']
+            fi = params['frames']
+        else:
+            fi = np.in1d(params['frames'], kwargs['save_every']).nonzero()[0]
     else:
         fi = [-1]
 
@@ -77,11 +80,19 @@ def append_ers(vl_ref, params, ers: np.ndarray, grids, vls, mbs, new_mbs, **kwar
     return np.hstack((ers, e)), g + grids, vls + v, mbs + new_mbs
 
 
-def grid_variants(comp_fn):
-    mbs = np.array([10, 15, 20, 25, 30, 50])
+def grid_variants(comp_fn, output_fn):
+    mbs = np.array([15, 25, 50, 90, 150])
     mv = [3 * mbs, 3 * mbs + 1, 3 * mbs + 2]
 
-    es, gs, vls = zip(*[close_comp('ref300.mat', ml, is_mb=False, order=2) for ml in mv])
+    vl_ref, g_ref, params = ref.load_reference(comp_fn)
+    es, gs, vls = zip(*[close_comp(vl_ref, params, ml, is_mb=False) for ml in mv])
+    es = np.vstack(es)
+    mv = np.vstack(mv)
+    gs = np.vstack(gs)
+    q = ref.calculate_q(es, mv)
+    ref.save_conv(output_fn, es, mbs, 2, q, params, grid_variants='3mb 3mb+1 3mb+2')
+    plotting.plot_errors(gs, es)
+    plt.show()
 
 
 def compare_orders(vl_ref, params, **kwargs):

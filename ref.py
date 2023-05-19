@@ -57,23 +57,37 @@ def error(v, v_ref, g: Grid):
 
 
 def error_interp(v, v_ref, g, g_ref):
+    if g.m > g_ref.m:
+        g_ref, g = g, g_ref
+        v_ref, v = v, v_ref
     v_ref_i = interpolate(v_ref, g_ref, g)  # v_ref interpolated onto g
     return error(v, v_ref_i, g)
 
 
 def errors_interp(gs, vs, v_ref, g_ref):
-    return np.vstack([error_interp(vs[i], v_ref, gs[i], g_ref) for i in range(len(vs))]).T
+    return np.vstack([error_interp(vs[i], v_ref, gs[i], g_ref) for i in range(len(vs))])
 
 
-def calculate_q(ers, gs):
-    ms = np.array([g.m for g in gs]).T
-    return -np.log10(ers[:-1] / ers[1:]).T / np.log10(ms[:-1] / ms[1:])
+def calculate_q(ers, ms):
+    if isinstance(ms[0], Grid):
+        ms = np.array([g.m for g in ms])
+    return -np.log10(ers[:-1, :] / ers[1:, :]) / np.log10(ms[:-1, :] / ms[1:, :])
 
 
 def error_conv(x, c, q): return c * (x ** q)
-def fit_q(hs, ers): return curve_fit(error_conv, hs, ers)
 
 
-def save_conv(fn, ers, mbs, orders, q, params, **other):
-    mdict = {'ers': ers, 'mbs': mbs, 'orders': orders, 'q': q, **params, **other}
+def fit_q(hs, ers, q=None):
+    return curve_fit(error_conv if q is None else lambda x, c: c * (x ** q), hs.ravel(), ers.ravel())
+
+
+def save_conv(fn, ers, mbs, order, q, params, **other):
+    mdict = {'ers': ers, 'mbs': mbs, 'order': order, 'q': q, **other, **params}
     spio.savemat(CALC_FOLDER + fn, mdict)
+
+
+def load_conv(fn, folder=CALC_FOLDER): return spio.loadmat(folder + fn)
+
+
+def parse_str(s: str, to=float):
+    return np.array([[to(n.replace(',', '.')) for n in ll.split('\t')] for ll in s.splitlines()])
