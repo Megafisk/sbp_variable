@@ -111,21 +111,47 @@ def m2h(m): return np.divide(1, m-1, out=np.full_like(m, np.Inf), where=m != 1, 
 def h2m(h): return np.divide(1, h, out=np.full_like(h, np.Inf), where=h != 0, casting='unsafe') + 1
 
 
-def plot_errors(hs, ers, fmt='x'):
-    fig: plt.Figure
-    ax: plt.Axes
-    fig, ax = plt.subplots(layout="constrained")
+def plot_errors(hs, ers, fmt='x', ax: plt.Axes = None):
+    fig = None
+    if ax is None:
+        fig, ax = plt.subplots(layout='constrained')
     if isinstance(hs, np.ndarray) and isinstance(hs.flatten()[0], Grid):
         hs = np.array([g.h for g in hs.flatten()]).reshape(hs.shape)
 
     lines = ax.loglog(hs, ers, fmt)
     ax2 = ax.secondary_xaxis('top', functions=(h2m, m2h))
     ax2.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-    ax2.get_xaxis().set_minor_formatter(matplotlib.ticker.ScalarFormatter())
+    # ax2.get_xaxis().set_minor_formatter(matplotlib.ticker.ScalarFormatter())
 
     ax.grid(visible=True, which='both', linestyle=':')
     ax.set_xlabel('$h$')
     ax2.set_xlabel('$m$')
     ax.set_ylabel('$||e||_h \\, / \\, ||v||$')
 
-    return fig, ax, ax2, lines
+    if fig is None:
+        return ax2, lines
+    else:
+        return fig, ax, ax2, lines
+
+
+def plot_q(hs, qs, markers, linestyle, ax):
+    ls = ax.semilogx(hs, qs, 'x' + linestyle)
+    for line, marker in zip(ls, markers):
+        line.set_marker(marker)
+    ax.grid(visible=True, which='both', linestyle=':')
+    # ax.set_xlabel('$h$')
+    ax.set_ylabel('$q$')
+    return ls
+
+
+def plot_ers_q(hs, ers, qs, markers, linestyle):
+    f, (ax_e, ax_q) = plt.subplots(nrows=2, ncols=1, sharex='all', layout='constrained')
+    ls_e = ax_e.loglog(hs, ers, 'x' + linestyle)
+    ls_q = ax_q.semilogx(hs, qs, 'x' + linestyle)
+
+    ax_u = ax_e.secondary_xaxis('top', functions=(h2m, m2h))
+    ax_u.set_xlabel('$m$')
+    ax_u.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ax_q.set_xlabel('$h$')
+    ax_e.set_ylabel('$||e||_h \\, / \\, ||v||$')
+    ax_q.set_ylabel('$q$')
