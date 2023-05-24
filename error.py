@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-import grid
+from grid import Grid
 import ref
 import var_b
 import plotting
@@ -10,7 +10,7 @@ import var_b_test
 
 
 def io(mb, T, ac, bc, ht, order=4, **kwargs):
-    g = grid.Grid(mb)
+    g = Grid(mb)
 
     u0 = var_b.initial_zero(g.N)
     g_in = var_b.inflow_wave(3, 0.1)
@@ -24,7 +24,7 @@ def io(mb, T, ac, bc, ht, order=4, **kwargs):
 
 def inner_outer(comp_fn):
     vl, params = ref.load_reference(comp_fn)
-    g_ref = grid.Grid(params['mb'] - 1)  # 60 * 3 + 1
+    g_ref = Grid(params['mb'] - 1)  # 60 * 3 + 1
     ac = params['a_center']
     bc = params['b_center']
     ht = params['dt']
@@ -55,7 +55,7 @@ def run_mbs(mbs, **kwargs):
 
 def close_comp(vl_ref, params, mbs, order=2, **kwargs):
     """Compares grids of similar size"""
-    g_ref = grid.Grid(params['mb'] - 1)  # 60 * 3 + 1
+    g_ref = Grid(params['mb'] - 1)  # 60 * 3 + 1
     if 'save_every' in kwargs:
         kwargs['ht'] = params['dt']
         if kwargs['save_every'] is True:
@@ -72,11 +72,12 @@ def close_comp(vl_ref, params, mbs, order=2, **kwargs):
     grids = [g for _, g in res]
     vls = [ts.vl if 'save_every' in kwargs else ts.v() for ts, _ in res]
     ers = ref.errors_interp(grids, vls, vl_ref[:, fi], g_ref)
-    return ers, grids, vls
+    hs = Grid.get_attr(grids, 'h').reshape(ers.shape)
+    return ers, grids, vls, hs
 
 
 def append_ers(vl_ref, params, ers: np.ndarray, grids, vls, mbs, new_mbs, **kwargs):
-    e, g, v = close_comp(vl_ref, params, new_mbs, **kwargs)
+    e, g, v, _ = close_comp(vl_ref, params, new_mbs, **kwargs)
     return np.hstack((ers, e)), g + grids, vls + v, mbs + new_mbs
 
 
@@ -99,9 +100,9 @@ def compare_orders(vl_ref, params, **kwargs):
     """Compares operators of different orders"""
     mbs = [10, 20, 30, 40, 60, 120]
     orders = [2, 4, 6]
-    gs = [grid.Grid(mb) for mb in mbs]
+    gs = [Grid(mb) for mb in mbs]
 
-    g_ref = grid.Grid(params['mb'] - 1)
+    g_ref = Grid(params['mb'] - 1)
     fs = params['frames']
 
     ers, _, vls = zip(*[close_comp(vl_ref, params, mbs, order=o, save_every=fs) for o in orders])
@@ -117,7 +118,7 @@ def compare_orders(vl_ref, params, **kwargs):
 
 def compare_timesteps():
     vl, params = ref.load_reference('ref300.mat')
-    g_ref = grid.Grid(params['mb'] - 1)
+    g_ref = Grid(params['mb'] - 1)
     ac = params['a_center']
     bc = params['b_center']
     ht = params['dt']
