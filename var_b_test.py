@@ -52,7 +52,7 @@ def have_fun():
     # Bc[Bc == 0] = b1
     B = interpn((gc.xvec, gc.yvec), Bc, g.xy, method='nearest').reshape(g.shape)
     B[X < 0.4] = 1
-    plot_v(B, g.m, (0, np.max(B)))
+    plot_v(B, g, (0, np.max(B)))
 
     zlow = -0.4
     zhigh = 0.4
@@ -83,7 +83,7 @@ def have_fun():
 
     rhs = var_b.build_ops(order, A, B, g_in, g)
 
-    fig, ax, img = plot_v(u0[:N], m, (zlow, zhigh), draw_block=False)
+    fig, ax, img = plot_v(u0[:N], g, (zlow, zhigh), draw_block=False)
     title = plt.title("t = 0.00")
     plt.draw()
     plt.pause(0.5)
@@ -97,7 +97,7 @@ def have_fun():
 def run_sim(A, B, g_in, u0, g, T, draw_every_n=1, order=2, vlim=(-0.5, 0.5)):
     rhs = var_b.build_ops(order, A, B, g_in, g)
 
-    fig, ax, img = plot_v(u0[:g.N], g.m, vlim)
+    fig, ax, img = plot_v(u0[:g.N], g, vlim)
     title = plt.title("t = 0.00")
     plt.draw()
     plt.pause(0.5)

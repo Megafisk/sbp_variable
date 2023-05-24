@@ -1,3 +1,5 @@
+from typing import Union
+
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
@@ -6,40 +8,32 @@ import numpy as np
 from grid import Grid
 
 
-def plot_on(ax: plt.Axes, v, m, vlim, title='', draw_block=True):
+def plot_v(v, g: Grid, vlim: Union[float, int, tuple] = 0.4, ax: plt.Axes = None, title='', draw_block=True,
+           decorate=True, cbar_label=None, **imshow_kwargs):
+    fig = None
+    if ax is None:
+        fig, ax = plt.subplots(layout='constrained')
     if isinstance(vlim, (float, int)):
         vlim = (-vlim, vlim)
-    img = ax.imshow(v.reshape((m, m), order='F'),
+    img = ax.imshow(v.reshape(g.shape, order='F'),
                     origin='lower',
-                    extent=[0, 1, 0, 1],
-                    vmin=vlim[0], vmax=vlim[1])
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.figure.colorbar(img, ax=ax)
-    ax.set_title(title)
+                    extent=[-g.h/2, 1 + g.h/2, -g.h/2, 1 + g.h/2],
+                    vmin=vlim[0], vmax=vlim[1], **imshow_kwargs)
+    if decorate:
+        ax.figure.colorbar(img, ax=ax)
+        ax.set_title(title)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+    if cbar_label is not None:
+        cbar = ax.figure.colorbar(img, ax=ax)
+        cbar.set_label(cbar_label)
     if draw_block:
         rect = matplotlib.patches.Rectangle((1/3, 1/3), 1/3, 1/3, edgecolor='r', facecolor='none')
         ax.add_patch(rect)
-    return img
-
-
-def plot_v(v, m, vlim=0.4, draw_block=True, ret_cbar=False):
-    ax: plt.Axes
-    fig: plt.Figure
-    fig, ax = plt.subplots(layout='constrained')
-    if isinstance(vlim, (float, int)):
-        vlim = (-vlim, vlim)
-    img = ax.imshow(v.reshape((m, m), order='F'),
-                    origin='lower',
-                    extent=[0, 1, 0, 1],
-                    vmin=vlim[0], vmax=vlim[1])
-    cbar = ax.figure.colorbar(img, ax=ax)
-    plt.xlabel("x")
-    plt.ylabel("y")
-    if draw_block:
-        rect = matplotlib.patches.Rectangle((1/3, 1/3), 1/3, 1/3, edgecolor='r', facecolor='none')
-        ax.add_patch(rect)
-    return (fig, ax, img) if not ret_cbar else (fig, ax, img, cbar)
+    if fig is None:
+        return img
+    else:
+        return fig, ax, img
 
 
 def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, **kwargs):
@@ -64,9 +58,9 @@ def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, **kwargs):
 
 
 def compare_frame(vl1, vl2, e, emag, g: Grid, frame: int):
-    plot_v(vl1[:, frame], g.m)
-    plot_v(vl2[:, frame], g.m)
-    plot_v(e[:, frame], g.m, (-emag, emag))
+    plot_v(vl1[:, frame], g)
+    plot_v(vl2[:, frame], g)
+    plot_v(e[:, frame], g, (-emag, emag))
 
 
 def compare_line(tvec, grids, vls, labels):

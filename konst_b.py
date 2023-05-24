@@ -91,8 +91,7 @@ plt.draw()
 plt.pause(0.5)
 
 
-def rhs(u): return DD @ u
-def gg(t): return np.vstack((G @ g(t), zeros_N))
+def rhs(t, u): return DD @ u + np.vstack((G @ g(t), zeros_N))
 
 
 # def gg(t): return 0
@@ -101,7 +100,7 @@ def gg(t): return np.vstack((G @ g(t), zeros_N))
 t = 0
 for t_i in range(mt - 1):
     # Take one step with the fourth order Runge-Kutta method.
-    u, t = rk4.step(rhs, u, gg, t, ht)
+    u, t = rk4.step(rhs, u, t, ht)
 
     # Update plot every 20th time step
     if (t_i % 10) == 0 or t_i == mt - 2:

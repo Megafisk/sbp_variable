@@ -115,8 +115,8 @@ def wave_block(g, a_center, b_center, a0=1, b0=1, block_type='outer', block_marg
     A = np.ones(g.shape) * a0
     B = np.ones(g.shape) * b0
     if g.m % 3 != 1:
-        i1 = np.argmax(g.xvec > 1/3) - (block_margin - 1)
-        i2 = np.argmax(g.xvec > 2/3) + (block_margin - 1)
+        i1 = np.argmax(g.xvec > 1 / 3) - (block_margin - 1)
+        i2 = np.argmax(g.xvec > 2 / 3) + (block_margin - 1)
         sl = slice(i1, i2)
     elif block_type == 'outer':
         sl = slice(g.mb + 1 - block_margin, 2 * g.mb + block_margin)
@@ -173,7 +173,10 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every=-1
         A, B = wave_block(grid, a_center, b_center, block_type=block_type, **kwargs)
 
     u0 = initial_zero(N)
-    g = inflow_wave(freq, amp)
+    if not isinstance(freq, (int, float)):
+        g = freq
+    else:
+        g = inflow_wave(freq, amp)
 
     rhs = build_ops(order, A, B, g, grid, ops=ops, **kwargs)
 
@@ -182,7 +185,7 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every=-1
     print(ht)
 
     if draw_every > 0:
-        fig, ax, img = plot_v(u0[:N], m, zlim, draw_block=True)
+        fig, ax, img = plot_v(u0[:N], g, zlim, draw_block=True)
         title = plt.title("t = 0.00")
         plt.draw()
         plt.pause(0.5)
