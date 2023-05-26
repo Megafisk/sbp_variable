@@ -20,7 +20,7 @@ def figure_complicated():
     fs_t = r['t_vec'][:, r['saved_frames']]
 
     shp = (2, 2)
-    f, axes = plt.subplots(*shp, layout='constrained', figsize=(5, 4.4), sharey='row', sharex='col', dpi=1200)
+    f, axes = plt.subplots(*shp, layout='constrained', figsize=(6, 5.2), sharey='row', sharex='col', dpi=1200)
     axes = axes.reshape(shp)
     imgs = np.zeros(4, dtype='object')
     for i, ax in enumerate(axes.flatten()):

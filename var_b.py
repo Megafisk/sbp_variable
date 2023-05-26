@@ -158,7 +158,8 @@ def mixed_block(g: Grid, order, a_center, b_center, block_margin=1, **kwargs):
 
 
 def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every=-1, save_every=-1,
-                      zlim=(-0.4, 0.4), ht=None, is_mb=True, margin=0.5, block_type='outer', **kwargs):
+                      zlim=(-0.4, 0.4), ht=None, is_mb=True, margin=0.5, block_type='outer', u0=None,
+                      **kwargs):
     start = time.time()
     grid = Grid(mb, is_mb)
     m, N, h, X, Y, x, y = grid.params()
@@ -172,7 +173,8 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every=-1
     else:
         A, B = wave_block(grid, a_center, b_center, block_type=block_type, **kwargs)
 
-    u0 = initial_zero(N)
+    if u0 is None:
+        u0 = initial_zero(N)
     if not isinstance(freq, (int, float)):
         g = freq
     else:
@@ -185,7 +187,7 @@ def reference_problem(mb, T, order, a_center, b_center, freq, amp, draw_every=-1
     print(ht)
 
     if draw_every > 0:
-        fig, ax, img = plot_v(u0[:N], g, zlim, draw_block=True)
+        fig, ax, img = plot_v(u0[:N], grid, zlim, draw_block=True)
         title = plt.title("t = 0.00")
         plt.draw()
         plt.pause(0.5)
