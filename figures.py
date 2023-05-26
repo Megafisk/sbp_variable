@@ -190,7 +190,7 @@ def block_jump_illustration():
     vs_i.append(vl_ref[:, -1])
 
     f: plt.Figure
-    f, axes = plt.subplots(2, 3, layout='constrained', sharey='row')
+    f, axes = plt.subplots(2, 3, layout='constrained', sharey='row', dpi=300)
     imgs = np.zeros(axes.shape, dtype='object')
     lower_titles = ['$p=2$, blandad, $s=1$', '$p=6$, blandad, $s=3$', 'referens']
     for i in range(axes.shape[1]):
@@ -206,6 +206,7 @@ def block_jump_illustration():
     cbar = f.colorbar(imgs[0, 0], ax=axes[:, 2], location='right', label='$v$', shrink=0.7, fraction=0.15, aspect=25)
     f.suptitle(f'$m_b={g.mb}$, $m={g.m}$, $a_c=10^3$, $b_c=10^5$, $t={t}$')
     f.set_size_inches(6, 4.2)
+    # f.savefig(FIG_FOLDER + 'hopp illustration blandad.pdf')
 
 
 def block_jump_smaller():
@@ -216,13 +217,14 @@ def block_jump_smaller():
     g = Grid(12)
     v = var_b.reference_problem(g.mb, t, p, a, b, 3, 0.1)[0].v()
     f: plt.Figure
-    f, ax = plt.subplots(layout='constrained')
+    f, ax = plt.subplots(layout='constrained', dpi=400)
     img = plotting.plot_v(v, g, 0.4, ax=ax, decorate=False)
     ax.set_xlabel('$x$')
     ax.set_ylabel('$y$')
     ax.set_title(f'$m_b=12$, $a={a}$, $b={b}$, $p={p}$, yttre')
     cbar = f.colorbar(img, ax=ax, label='$v$', shrink=0.7)
     f.set_size_inches(3.5, 3)
+    f.savefig(FIG_FOLDER + 'hopp illustration b100.pdf')
 
 
 def grid_type(ax: plt.Axes, g, title, B=None, **kwargs):
@@ -300,8 +302,9 @@ if __name__ == '__main__':
     plt.rcParams['text.usetex'] = True
     # grid_variants()
 
-    airglass()
+    # airglass()
     # conv_inv()
     # grid_variants_faster()
     # ref450_q()
+    block_jump_illustration()
     plt.show()

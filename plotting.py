@@ -36,7 +36,7 @@ def plot_v(v, g: Grid, vlim: Union[float, int, tuple] = 0.4, ax: plt.Axes = None
         return fig, ax, img
 
 
-def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, **kwargs):
+def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, **imshow_kwargs):
     ax: plt.Axes
     fig: plt.Figure
     fig, ax = plt.subplots()
@@ -47,10 +47,12 @@ def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, **kwargs):
         im = ax.imshow(vl[:, i].reshape(g.shape, order='F'),
                        origin='lower',
                        extent=[0, 1, 0, 1],
-                       vmin=vlim[0], vmax=vlim[1])
+                       vmin=vlim[0], vmax=vlim[1],
+                       interpolation='nearest',
+                       **imshow_kwargs)
         ims.append([im])
 
-    ani = anim.ArtistAnimation(fig, ims, blit=True, interval=interval, **kwargs)
+    ani = anim.ArtistAnimation(fig, ims, blit=True, interval=interval)
     # fig.colorbar(img, ax=ax)
     plt.show()
 
