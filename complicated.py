@@ -56,6 +56,13 @@ def figure_comp_b():
     f.savefig(figures.FIG_FOLDER + 'komp_b.pdf')
 
 
+def nice_plots():
+    r = ref.load_conv('waveguide c10')
+    anim = plotting.plot_anim(r['vl'], g, interval=50, subplots_kwargs={'dpi': 400}, cmap='gray')
+    anim.save(ref.FOLDER + 'anim/bla a10 b1000 v2.mp4', bitrate=4000)
+    plt.close()
+
+
 if __name__ == '__main__':
     plt.rcParams['text.usetex'] = True
     figure_complicated()

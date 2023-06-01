@@ -28,12 +28,19 @@ def load_reference(filename, folder=REF_FOLDER):
     v_list = ref['v_list'][0, 0][reorder, :]
 
     params = {key: float(ref[key]) for key in ('a_center', 'b_center', 'freq', 'amp', 't', 'T', 'dt')} \
-        | {key: int(ref[key]) for key in ('mb', 'mt')}
+             | {key: int(ref[key]) for key in ('mb', 'mt')}
     params['m'] = m
     params['N'] = m * m
     params['frames'] = ref['saved'][0, 0].ravel()
     params['saved_times'] = np.linspace(0, params['T'], params['mt'] + 1)[params['frames']]
-    return v_list, params
+    if 'source_pos' in ref.dtype.fields:
+        params['source_pos'] = ref['source_pos'][0, 0]
+    g_ref = Grid(m, False)
+    return v_list, g_ref, params
+
+
+# def prob_params(params, ht=False, frames):
+#     return {k: params[k] for k in {'a_center', 'b_center', ''}}
 
 
 def interpolate(vl, g_ref: Grid, g: Grid):

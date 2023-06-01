@@ -36,10 +36,10 @@ def plot_v(v, g: Grid, vlim: Union[float, int, tuple] = 0.4, ax: plt.Axes = None
         return fig, ax, img
 
 
-def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, **imshow_kwargs):
+def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, subplots_kwargs={}, **imshow_kwargs):
     ax: plt.Axes
     fig: plt.Figure
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(**subplots_kwargs)
     plt.xlabel("x")
     plt.ylabel("y")
     ims = []
@@ -54,7 +54,7 @@ def plot_anim(vl: np.ndarray, g: Grid, vlim=(-0.4, 0.4), interval=10, **imshow_k
 
     ani = anim.ArtistAnimation(fig, ims, blit=True, interval=interval)
     # fig.colorbar(img, ax=ax)
-    plt.show()
+    # plt.show()
 
     return ani
 
@@ -157,3 +157,8 @@ def plot_ers_q(hs, ers, qs, markers, linestyle):
     ax_q.set_xlabel('$h$')
     ax_e.set_ylabel('$||e||_h \\, / \\, ||v||$')
     ax_q.set_ylabel('$q$')
+
+
+def show_only(ax, poss):
+    for t in ax.xaxis.get_ticklabels(which='minor'):
+        t.set_visible(t.get_position()[0] in poss)

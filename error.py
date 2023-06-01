@@ -132,3 +132,30 @@ def compare_timesteps():
     vvl = vl[:, :2 * ts1.vl.shape[1]:2]
     plotting.compare_line(ts1.t_vec, [g_ref, g, g, g], [vvl, ts1.vl, ts2.vl, ts3.vl], ['ref', 1, 0.5, 0.25])
     pass
+
+
+# same jump in c but with different b
+def compare_params(**kwargs):
+    mb = 10
+    g = Grid(mb)
+
+    mags = np.arange(-4, 7)
+    vs = [var_b.reference_problem(mb, 0.42, a_center=10. ** (mag - 2), b_center=10. ** mag, freq=2.6, amp=0.1,
+                                  order=4, **kwargs)[0].v()
+          for mag in mags]
+    ls = [g.get_hor_line(v, 0.5) for v in vs]
+
+
+# ers2, _, vs2, _ = error.close_comp(vl_ref, params, mbs, order=2, block_type='inner', block_margin=1)
+# ls += ax.plot(hs, ers2 / vnorm, label='')
+# plt.legend()
+# ers = np.hstack((ers, ers2))
+# vls.append(vs2)
+
+
+if __name__ == '__main__':
+    # grid_variants('ref450l', 'ref450l grid variants')
+    # vl_ref, g_ref, params = ref.load_reference('faster180')
+    # mbs = np.vstack([6, 10, 15, 20, 30, 45, 60])
+    # close_comp(vl_ref, params, mbs.flatten(), order=2, block_type='mixed', block_margin=1)
+    pass

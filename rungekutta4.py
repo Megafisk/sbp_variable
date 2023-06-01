@@ -28,7 +28,8 @@ def step(f, v, t, dt):
 
 class RK4Timestepper:
     def __init__(self, T, htt, rhs, u0, update=lambda ts: None,
-                 save_every: Union[int, float, Sequence, np.ndarray] = -1, N=None):
+                 save_every: Union[int, float, Sequence, np.ndarray] = -1, N=None,
+                 before_step=lambda ts: None):
         self.mt = int(np.ceil(T / htt))  # number of timesteps to take
         # mt+1 since the initial value is already given
         self.t_vec, self.ht = np.linspace(0, T, self.mt + 1, retstep=True)
@@ -38,6 +39,7 @@ class RK4Timestepper:
         self.t_i = 0
         self.u = u0
         self.update = update
+        self.before_step = before_step
         if N:
             self.N = N
         else:
@@ -62,6 +64,7 @@ class RK4Timestepper:
                 self._save_i = 1
 
     def step(self):
+        self.before_step(self)
         self.u, self.t = step(self.f, self.u, self.t, self.ht)
         self.t_i += 1
         self.update(self)

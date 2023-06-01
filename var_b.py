@@ -37,6 +37,27 @@ def inflow_gaussian(amp, w, t0):
     return g
 
 
+phi_p = {2: [[- 1 / 4, 1 / 2]],
+         4: [[1 / 32, -4 / 32, -4 / 32, 16 / 32],
+             [-1 / 96, 12 / 96, -44 / 96, 48 / 96]],
+         6: [[-1 / 768, 1 / 128, 5 / 192, -5 / 32, -1 / 12, 1 / 2],
+             [1 / 1536, -3 / 256, 25 / 384, -5 / 64, -13 / 48, 1 / 2],
+             [-1 / 7680, 1 / 256, -17 / 384, 15 / 64, -137 / 240, 1 / 2]]}
+thresholds = {2: [2], 4: [2, 4], 6: [2, 4, 6]}
+
+
+def delta(g: Grid, x0, y0, phi_order=2):
+    fs = [lambda x: np.polyval(p, x) for p in phi_p[phi_order]]
+    th = thresholds[phi_order]
+
+    def phi(xi):
+        ax = np.abs(xi)
+        ts = [ax < th[0], *[(th[i - 1] >= ax) & (ax < th[i]) for i in range(1, len(th))]]
+        return spsp.csr_matrix(np.piecewise(ax, ts, fs))
+
+    return 1 / g.h ** 2 * spsp.kron(phi((g.xvec - x0) / g.h), phi((g.yvec - y0) / g.h)).reshape((g.N, 1))
+
+
 def calc_timestep(order, A, B, G: Grid, mb_ref=6, margin=0.5):
     """
     Calculates timestep from the D-operator for a coarse grid with mb = mb_ref points
@@ -58,13 +79,13 @@ def calc_timestep(order, A, B, G: Grid, mb_ref=6, margin=0.5):
     return margin * 2.8 * c * G.h
 
 
-def build_ops(order, A, B, g, grid, output=True, retops=False, ops=None):
-    m, N, h = grid.mnh()
+def build_ops(order, A, B, g_in, g, output=True, retops=False, ops=None, phi_order=2, source_pos=None, **kwargs):
+    m, N, h = g.mnh()
     a = A.reshape((N,))
     b = B.reshape((N,))
 
     if output:
-        print(f'building order {order} operators with m={grid.m} points...')
+        print(f'building order {order} operators with m={g.m} points...')
     if ops is None:
         ops_1d = D2Var.D2_Variable(m, h, order)
         ops_2d = D2Var.ops_2d(m, b, ops_1d)
@@ -80,7 +101,21 @@ def build_ops(order, A, B, g, grid, output=True, retops=False, ops=None):
 
     tau_E = spsp.diags(np.sqrt(A * B)[-1, :])
     E = - AAI @ HHI @ eE @ H @ tau_E @ eE.T
-    G = AAI @ HHI @ eW @ H
+
+    if source_pos is None:  # boundary inflow
+        # mask = np.zeros((g.m, 1))
+        # mask[-int(g.m * 0.2)] = 1
+        G = AAI @ HHI @ eW @ H @ np.ones((g.m, 1))
+
+        def Gg(t):
+            return G * g_in(t)
+    else:  # point source
+        x0, y0 = source_pos
+        G = delta(g, x0, y0, phi_order)
+
+        def Gg(t):
+            return (G * g_in(t)).toarray()
+
     D = AAI @ (D2x + D2y) - AAI @ HHI @ (
             - eW @ H @ spsp.diags(B[0, :]) @ d1_W.T + eE @ H @ spsp.diags(B[-1, :]) @ d1_E.T
             + eN @ H @ spsp.diags(B[:, -1]) @ d1_N.T - eS @ H @ spsp.diags(B[:, 0]) @ d1_S.T)
@@ -89,7 +124,7 @@ def build_ops(order, A, B, g, grid, output=True, retops=False, ops=None):
     zeros_N = np.zeros((N, 1))
 
     def rhs(t, u):
-        return DD @ u + np.vstack((zeros_N, G @ g(t)))
+        return DD @ u + np.vstack((zeros_N, Gg(t)))
 
     if output:
         print('operators done!')
@@ -131,6 +166,10 @@ def wave_block(g, a_center, b_center, a0=1, b0=1, block_type='outer', block_marg
 
 
 def mixed_block(g: Grid, order, a_center, b_center, block_margin=1, **kwargs):
+    # non_inner_l = (g.m - 1) // 3 + 1
+    # non_inner_r = g.m - ((g.m - 1) // 3) - 1
+    # si = slice(non_inner_l + block_margin, non_inner_r - block_margin)
+    # so = slice(non_inner_l, non_inner_r)
     si = slice(g.mb + block_margin, 2 * g.mb + 1 - block_margin)
     so = slice(g.mb, 2 * g.mb + 1)
 

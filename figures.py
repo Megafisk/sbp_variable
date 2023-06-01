@@ -53,6 +53,11 @@ def conv_inv():
     # f.set_size_inches(5, 4)
     f.set_size_inches(4, 3.5)
 
+    # ax.get_xaxis().set_minor_formatter(mpt.LogFormatterSciNotation(minor_thresholds=(100, 0)))
+    # ax2.get_xaxis().set_minor_formatter(mpt.ScalarFormatter())
+    # plotting.show_only(ax, (0.04, 0.002))
+    # plotting.show_only(ax2, (20, 50, 200, 500))
+
     plt.show()
 
 
@@ -171,6 +176,11 @@ def grid_variants_faster():
     lg = f.legend(np.array(ls)[ind], np.array(legs)[ind], loc='outside lower right', ncols=2, fontsize=9)
     ax.set_title('$a=1$, $b=5$, $t=1.3$')
     f.set_size_inches(3.5, 4)
+
+    # ax.get_xaxis().set_minor_formatter(mpt.LogFormatterSciNotation(minor_thresholds=100))
+    # plotting.show_only(ax, (0.04, 0.002))
+    # ax2.get_xaxis().set_minor_formatter(mpt.ScalarFormatter())
+    # plotting.show_only(ax2, (20, 50, 200, 500))
     plt.show()
 
 
